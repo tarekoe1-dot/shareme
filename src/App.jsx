@@ -491,7 +491,7 @@ function ReportModal({onClose}) {
 }
 
 // ─── POST DETAIL ──────────────────────────────────────────────
-function DetailModal({p,onClose,onLike,onComment}) {
+function DetailModal({p,onClose,onLike,onComment,onViewProfile}) {
   const [liked,setLiked]=useState(false);
   const [txt,setTxt]=useState("");
   const [report,setReport]=useState(false);
@@ -562,10 +562,12 @@ function DetailModal({p,onClose,onLike,onComment}) {
 
         {/* Header */}
         <div style={{padding:"8px 18px 12px",display:"flex",alignItems:"center",gap:11}}>
-          <div style={{width:44,height:44,borderRadius:13,flexShrink:0,background:`linear-gradient(135deg,${cat.color||C.accent},${C.purple})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,fontFamily:"Syne,sans-serif"}}>{p.av}</div>
+          <div onClick={()=>onViewProfile&&onViewProfile({user:p.user,av:p.av,tier:"free",dist:p.dist,status:false,bio:"",verified:false})}
+            style={{width:44,height:44,borderRadius:13,flexShrink:0,background:`linear-gradient(135deg,${cat.color||C.accent},${C.purple})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,fontFamily:"Syne,sans-serif",cursor:"pointer"}}>{p.av}</div>
           <div style={{flex:1}}>
             <div style={{display:"flex",alignItems:"center",gap:6}}>
-              <span style={{fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:15}}>@{p.user}</span>
+              <span onClick={()=>onViewProfile&&onViewProfile({user:p.user,av:p.av,tier:"free",dist:p.dist,status:false,bio:"",verified:false})}
+                style={{fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:15,cursor:"pointer"}}>@{p.user}</span>
               {p.isAd&&<span style={{background:C.gS,color:C.gold,border:`1px solid rgba(245,200,66,.3)`,borderRadius:4,padding:"1px 5px",fontSize:9,fontWeight:700}}>AD</span>}
             </div>
             <div style={{display:"flex",gap:6,alignItems:"center",marginTop:2}}><span style={{color:C.muted,fontSize:11}}>{p.time}</span><CatBadge id={p.cat}/></div>
@@ -622,8 +624,15 @@ function DetailModal({p,onClose,onLike,onComment}) {
           <div style={{fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:13,margin:"12px 0 10px"}}>💬 {p.comments?.length||0} Comments</div>
           {p.comments?.map(c=>(
             <div key={c.id} style={{display:"flex",gap:9,marginBottom:12,padding:"8px 10px",background:"rgba(255,255,255,.02)",borderRadius:9}}>
-              <div style={{width:30,height:30,borderRadius:9,flexShrink:0,background:`linear-gradient(135deg,${C.purple},${C.blue})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700}}>{c.av}</div>
-              <div style={{flex:1}}><div style={{fontSize:12,fontWeight:600,marginBottom:2}}>@{c.user} <span style={{color:C.muted,fontWeight:400}}>{c.time}</span></div><p style={{fontSize:13,lineHeight:1.5}}>{c.text}</p></div>
+              <div onClick={()=>onViewProfile&&onViewProfile({user:c.user,av:c.av,tier:"free",dist:0,status:false,bio:"",verified:false})}
+                style={{width:30,height:30,borderRadius:9,flexShrink:0,background:`linear-gradient(135deg,${C.purple},${C.blue})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,cursor:"pointer"}}>{c.av}</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:12,fontWeight:600,marginBottom:2}}>
+                  <span onClick={()=>onViewProfile&&onViewProfile({user:c.user,av:c.av,tier:"free",dist:0,status:false,bio:"",verified:false})} style={{cursor:"pointer"}}>@{c.user}</span>
+                  {" "}<span style={{color:C.muted,fontWeight:400}}>{c.time}</span>
+                </div>
+                <p style={{fontSize:13,lineHeight:1.5}}>{c.text}</p>
+              </div>
             </div>
           ))}
           <div style={{display:"flex",gap:8,marginTop:6}}>
@@ -638,7 +647,7 @@ function DetailModal({p,onClose,onLike,onComment}) {
 }
 
 // ─── POST CARD ────────────────────────────────────────────────
-function PostCard({post,onOpen,onLike,tier,isNextLocked}) {
+function PostCard({post,onOpen,onLike,tier,isNextLocked,onViewProfile}) {
   const [liked,setLiked]=useState(false);
   const handleLike=e=>{e.stopPropagation();setLiked(l=>!l);onLike(post.id,!liked);};
   const cat=gC(post.cat);
@@ -673,9 +682,11 @@ function PostCard({post,onOpen,onLike,tier,isNextLocked}) {
       {post.isAd&&<div style={{background:`linear-gradient(90deg,${C.gS},transparent)`,borderBottom:`1px solid rgba(245,200,66,.1)`,padding:"3px 13px",display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:9,color:C.gold,fontWeight:700,fontFamily:"Syne,sans-serif"}}>✦ SPONSORED</span><CatBadge id={post.cat}/>{post.boosted&&<span style={{marginLeft:"auto",fontSize:9,color:C.orange,fontWeight:700}}>🚀 BOOSTED</span>}</div>}
       {/* Header */}
       <div style={{padding:"11px 13px 9px",display:"flex",alignItems:"center",gap:9}}>
-        <div style={{width:36,height:36,borderRadius:11,flexShrink:0,background:`linear-gradient(135deg,${cat.color||C.accent},${C.purple})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700}}>{post.av}</div>
+        <div onClick={e=>{e.stopPropagation();onViewProfile&&onViewProfile({user:post.user,av:post.av,tier:"free",dist:post.dist,status:false,bio:"",verified:false});}}
+          style={{width:36,height:36,borderRadius:11,flexShrink:0,background:`linear-gradient(135deg,${cat.color||C.accent},${C.purple})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,cursor:"pointer"}}>{post.av}</div>
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:13,fontWeight:600}}>@{post.user}</div>
+          <div onClick={e=>{e.stopPropagation();onViewProfile&&onViewProfile({user:post.user,av:post.av,tier:"free",dist:post.dist,status:false,bio:"",verified:false});}}
+            style={{fontSize:13,fontWeight:600,cursor:"pointer",display:"inline-block"}}>@{post.user}</div>
           <div style={{fontSize:11,color:C.muted}}>{post.time}</div>
         </div>
         <span style={{background:`rgba(${post.dist<.3?"61,220,132":post.dist<.7?"255,77,109":"104,104,160"},.15)`,color:post.dist<.3?C.green:post.dist<.7?C.accent:C.muted,border:`1px solid ${post.dist<.3?C.green:post.dist<.7?C.accent:C.muted}44`,borderRadius:6,padding:"2px 6px",fontSize:9,fontWeight:600,whiteSpace:"nowrap"}}>📍 {post.dist}km</span>
@@ -701,7 +712,7 @@ function PostCard({post,onOpen,onLike,tier,isNextLocked}) {
 }
 
 // ─── FEED SCREEN ──────────────────────────────────────────────
-function FeedScreen({posts,onOpen,onLike,tier,lastPostTime}) {
+function FeedScreen({posts,onOpen,onLike,tier,lastPostTime,onViewProfile}) {
   const [feedTab,setFeedTab]=useState("nearby"); // nearby | world
   const [cat,setCat]=useState("all");
   const [search,setSearch]=useState("");
@@ -800,7 +811,7 @@ function FeedScreen({posts,onOpen,onLike,tier,lastPostTime}) {
                 <button onClick={()=>setFeedTab("world")} style={{background:C.aS,border:`1px solid ${C.accent}`,borderRadius:11,padding:"10px 22px",cursor:"pointer",color:C.accent,fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:13}}>Explore World Feed →</button>
               </div>
             )}
-            {nearbyFiltered.map(p=><PostCard key={p.id} post={p} onOpen={onOpen} onLike={onLike} tier={tier}/>)}
+            {nearbyFiltered.map(p=><PostCard key={p.id} post={p} onOpen={onOpen} onLike={onLike} tier={tier} onViewProfile={onViewProfile}/>)}
             {/* Next locked teaser */}
             {nextLocked&&cat==="all"&&!search&&<>
               <div style={{display:"flex",alignItems:"center",gap:8,margin:"4px 0"}}><div style={{flex:1,height:1,background:C.border}}/><span style={{color:C.muted,fontSize:10,whiteSpace:"nowrap"}}>beyond your {t.scope}</span><div style={{flex:1,height:1,background:C.border}}/></div>
@@ -1666,8 +1677,154 @@ function PrivacySettingsScreen({tier,privacySettings,onUpdate,onBack}) {
   );
 }
 
+// ─── PUBLIC PROFILE SCREEN ────────────────────────────────────
+// Shown when any @username is tapped anywhere in the app
+function PublicProfileScreen({profileUser, onBack, myStatus, onOpenDM, posts, currentUser}) {
+  // Build a mock public profile from what we know about this user
+  // In a real app this would be fetched from the server
+  const isMe = profileUser.user === currentUser?.name?.toLowerCase().replace(/ /g,"_");
+  const t = gT(profileUser.tier||"free");
+  const userPosts = posts.filter(p=>p.user===profileUser.user&&(!p.expiresAt||!fmtExpiry(p.expiresAt)?.expired));
+  const totalLikes = userPosts.reduce((a,p)=>a+p.likes,0);
+  const totalComments = userPosts.reduce((a,p)=>a+(p.comments?.length||0),0);
+  const totalViews = userPosts.reduce((a,p)=>a+p.views,0);
+
+  const band = distBand(profileUser.dist||0);
+  const canMsg = !isMe && myStatus && profileUser.status;
+  const inRange = (profileUser.dist||0) < (gT(profileUser.tier||"free").r||1);
+
+  return(
+    <div style={{minHeight:"100%",background:C.bg,paddingBottom:100}}>
+      {/* Header bar */}
+      <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:11,background:C.bg,position:"sticky",top:0,zIndex:10}}>
+        <button onClick={onBack} style={{background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:20,padding:"0 4px",display:"flex",alignItems:"center"}}>←</button>
+        <div style={{fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:16}}>@{profileUser.user}</div>
+      </div>
+
+      <div style={{padding:"20px 16px 0"}}>
+        {/* Profile card */}
+        <div style={{background:C.card,border:`1px solid ${t.color}33`,borderRadius:18,padding:20,marginBottom:16,boxShadow:`0 0 24px ${t.color}11`}}>
+          <div style={{display:"flex",alignItems:"flex-start",gap:14,marginBottom:14}}>
+            {/* Avatar */}
+            <div style={{width:64,height:64,borderRadius:18,flexShrink:0,background:`linear-gradient(135deg,${t.color},${C.purple})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,fontFamily:"Syne,sans-serif",boxShadow:`0 4px 16px ${t.color}44`,position:"relative"}}>
+              {profileUser.av}
+              {/* Online dot */}
+              {profileUser.status&&<div style={{position:"absolute",bottom:-2,right:-2,width:14,height:14,borderRadius:"50%",background:C.green,border:`2px solid ${C.bg}`,boxShadow:`0 0 6px ${C.green}`}}/>}
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap",marginBottom:4}}>
+                <span style={{fontFamily:"Syne,sans-serif",fontWeight:800,fontSize:17}}>@{profileUser.user}</span>
+                {profileUser.verified&&<span style={{background:"rgba(61,220,132,.15)",color:C.green,border:"1px solid rgba(61,220,132,.3)",borderRadius:5,padding:"1px 7px",fontSize:10,fontWeight:700}}>✓ Verified</span>}
+                {isMe&&<span style={{background:C.aS,color:C.accent,borderRadius:5,padding:"1px 7px",fontSize:10,fontWeight:700}}>You</span>}
+              </div>
+              <div style={{marginBottom:6}}><TBadge id={profileUser.tier||"free"}/></div>
+              {profileUser.bio&&<p style={{fontSize:13,color:C.muted,lineHeight:1.6}}>{profileUser.bio}</p>}
+            </div>
+          </div>
+
+          {/* Social links */}
+          {(profileUser.website||profileUser.instagram||profileUser.twitter)&&(
+            <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:12,paddingTop:10,borderTop:`1px solid ${C.border}`}}>
+              {profileUser.website&&<a href={profileUser.website} target="_blank" rel="noopener noreferrer" style={{fontSize:12,color:C.blue,textDecoration:"none",display:"flex",alignItems:"center",gap:4}}>🌐 Website</a>}
+              {profileUser.instagram&&<span style={{fontSize:12,color:"#e1306c"}}>📸 @{profileUser.instagram}</span>}
+              {profileUser.twitter&&<span style={{fontSize:12,color:C.text}}>✖ @{profileUser.twitter}</span>}
+            </div>
+          )}
+
+          {/* Public stats */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:9,marginBottom:14,paddingTop:10,borderTop:`1px solid ${C.border}`}}>
+            {[
+              {icon:"📝", label:"Posts",    value:userPosts.length, color:t.color},
+              {icon:"❤️", label:"Likes",    value:totalLikes,       color:C.accent},
+              {icon:"💬", label:"Comments", value:totalComments,    color:C.purple},
+            ].map(s=>(
+              <div key={s.label} style={{background:C.surface,borderRadius:11,padding:"10px 8px",textAlign:"center"}}>
+                <div style={{fontSize:16,marginBottom:3}}>{s.icon}</div>
+                <div style={{fontFamily:"Syne,sans-serif",fontWeight:800,fontSize:16,color:s.color}}>{s.value}</div>
+                <div style={{color:C.muted,fontSize:10,marginTop:2}}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Distance + status */}
+          {!isMe&&(
+            <div style={{display:"flex",alignItems:"center",gap:9,padding:"10px 0",borderTop:`1px solid ${C.border}`}}>
+              <span style={{fontSize:12,color:band.color,fontWeight:600}}>{band.label}</span>
+              <span style={{color:C.border}}>·</span>
+              {profileUser.status
+                ?<span style={{fontSize:12,color:C.green}}>● Free to Chat</span>
+                :<span style={{fontSize:12,color:C.muted}}>Status off</span>
+              }
+              <span style={{color:C.border}}>·</span>
+              <span style={{fontSize:12,color:C.muted}}>{t.scope}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Action button */}
+        {!isMe&&(
+          <div style={{marginBottom:20}}>
+            {canMsg?(
+              <button onClick={()=>onOpenDM(profileUser)} style={{width:"100%",padding:13,borderRadius:13,background:`linear-gradient(135deg,${C.green},rgba(61,220,132,.7))`,border:"none",color:"#08080e",fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:15,cursor:"pointer",boxShadow:`0 4px 16px rgba(61,220,132,.35)`,display:"flex",alignItems:"center",justifyContent:"center",gap:9}}>
+                <span>💬</span> Message @{profileUser.user}
+              </button>
+            ):(
+              <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 16px",display:"flex",gap:11,alignItems:"flex-start"}}>
+                <span style={{fontSize:16,flexShrink:0}}>🔒</span>
+                <div>
+                  <div style={{fontSize:13,fontWeight:600,marginBottom:3}}>Can't message right now</div>
+                  <div style={{fontSize:12,color:C.muted,lineHeight:1.6}}>
+                    {!myStatus&&!profileUser.status?"Both statuses need to be on and you need to be in range."
+                      :!myStatus?"Turn on your Free to Chat status to message people."
+                      :!profileUser.status?`@${profileUser.user} has their status off.`
+                      :!inRange?`You're not in ${profileUser.user}'s range right now.`
+                      :"Both need Free to Chat on and be in range."}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Their posts */}
+        <div style={{marginBottom:12}}>
+          <div style={{fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:15,marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span>Posts</span>
+            <span style={{fontSize:12,color:C.muted,fontWeight:400}}>{userPosts.length} active</span>
+          </div>
+          {userPosts.length===0?(
+            <div style={{textAlign:"center",padding:"30px 20px",color:C.muted,background:C.card,borderRadius:14,border:`1px solid ${C.border}`}}>
+              <div style={{fontSize:28,marginBottom:8}}>📭</div>
+              <div style={{fontSize:13}}>No active posts right now</div>
+            </div>
+          ):(
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {userPosts.slice(0,5).map(p=>(
+                <div key={p.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:13,overflow:"hidden"}}>
+                  {p.img&&<img src={p.img} alt="" style={{width:"100%",display:"block",height:140,objectFit:"cover"}}/>}
+                  <div style={{padding:"11px 13px"}}>
+                    <p style={{fontSize:13,lineHeight:1.5,marginBottom:8,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{p.content}</p>
+                    <div style={{display:"flex",gap:12,alignItems:"center"}}>
+                      <span style={{fontSize:11,color:C.muted}}>❤️ {p.likes}</span>
+                      <span style={{fontSize:11,color:C.muted}}>💬 {p.comments?.length||0}</span>
+                      <span style={{fontSize:11,color:C.muted}}>👁 {p.views}</span>
+                      <CatBadge id={p.cat}/>
+                      {(()=>{const exp=p.expiresAt?fmtExpiry(p.expiresAt):null;if(!exp||exp.expired)return null;return <span style={{marginLeft:"auto",fontSize:10,color:exp.color,fontWeight:600}}>⏱ {exp.label}</span>;})()}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {userPosts.length>5&&<div style={{textAlign:"center",fontSize:12,color:C.muted,padding:"8px 0"}}>+{userPosts.length-5} more posts</div>}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── UNIFIED CHAT TAB ─────────────────────────────────────────
-function ChatTab({myStatus,onStatusToggle,convos,onOpenDM,onOpenGroup,onOpenChannel,groups,channels,tier,user,onCreateGroup,onDeleteGroup}) {
+function ChatTab({myStatus,onStatusToggle,convos,onOpenDM,onOpenGroup,onOpenChannel,groups,channels,tier,user,onCreateGroup,onDeleteGroup,onViewProfile}) {
   const [section,setSection]=useState("people"); // people | groups | channels | dms
   const t=gT(tier);
   const myGroup=groups.find(g=>g.owner===user?.name?.toLowerCase().replace(/ /g,"_"));
@@ -1729,8 +1886,8 @@ function ChatTab({myStatus,onStatusToggle,convos,onOpenDM,onOpenGroup,onOpenChan
               const canMsg=myStatus&&person.status;
               const band=distBand(person.dist);
               return(
-                <div key={person.id} onClick={()=>canMsg&&onOpenDM(person)}
-                  style={{background:C.card,border:`1px solid ${canMsg?"rgba(61,220,132,.25)":C.border}`,borderRadius:13,padding:"12px 13px",display:"flex",alignItems:"center",gap:11,cursor:canMsg?"pointer":"default",transition:"all .2s",opacity:!myStatus&&!person.status?.5:1}}>
+                <div key={person.id} onClick={()=>onViewProfile&&onViewProfile(person)}
+                  style={{background:C.card,border:`1px solid ${canMsg?"rgba(61,220,132,.25)":C.border}`,borderRadius:13,padding:"12px 13px",display:"flex",alignItems:"center",gap:11,cursor:"pointer",transition:"all .2s",opacity:!myStatus&&!person.status?.5:1}}>
                   <div style={{position:"relative",flexShrink:0}}>
                     <div style={{width:42,height:42,borderRadius:12,background:`linear-gradient(135deg,${person.status?C.green:C.muted},${C.purple})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,opacity:person.status?1:.6}}>{person.av}</div>
                     <div style={{position:"absolute",bottom:-2,right:-2,width:10,height:10,borderRadius:"50%",background:person.status?C.green:C.border,border:`2px solid ${C.bg}`,boxShadow:person.status?`0 0 5px ${C.green}`:""}}/> 
@@ -1743,7 +1900,11 @@ function ChatTab({myStatus,onStatusToggle,convos,onOpenDM,onOpenGroup,onOpenChan
                     <div style={{fontSize:11,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{person.bio}</div>
                     <span style={{fontSize:10,color:band.color}}>{band.label}</span>
                   </div>
-                  {canMsg&&<div style={{background:"rgba(61,220,132,.12)",border:"1px solid rgba(61,220,132,.25)",borderRadius:7,padding:"5px 9px",color:C.green,fontSize:11,fontWeight:700,flexShrink:0}}>DM</div>}
+                  {canMsg?(
+                    <button onClick={e=>{e.stopPropagation();onOpenDM(person);}} style={{background:"rgba(61,220,132,.12)",border:"1px solid rgba(61,220,132,.25)",borderRadius:7,padding:"5px 9px",color:C.green,fontSize:11,fontWeight:700,flexShrink:0,cursor:"pointer"}}>DM</button>
+                  ):(
+                    <span style={{color:C.muted,fontSize:18,flexShrink:0}}>›</span>
+                  )}
                 </div>
               );
             })}
@@ -2366,6 +2527,7 @@ export default function App() {
   const [sharesUsed,setSU]=useState(2);
   const [unread,setUnread]=useState(3);
   const [lastPostTime,setLastPostTime]=useState(null); // burst protection
+  const [viewingProfile,setViewingProfile]=useState(null); // public profile overlay
   // Messaging + groups state
   const [myStatus,setMyStatus]=useState(false);
   const [convos,setConvos]=useState(INIT_CONVOS);
@@ -2500,14 +2662,14 @@ export default function App() {
           )}
           {/* Main screens */}
           {!showThread&&<>
-            {tab==="feed"    &&<FeedScreen    posts={posts} onOpen={setDetail} onLike={like} tier={tier} lastPostTime={lastPostTime}/>}
+            {tab==="feed"    &&<FeedScreen    posts={posts} onOpen={setDetail} onLike={like} tier={tier} lastPostTime={lastPostTime} onViewProfile={setViewingProfile}/>}
             {tab==="map"     &&<MapView       posts={posts} loc={loc} tier={tier}/>}
             {tab==="chat"    &&<ChatTab
               myStatus={myStatus} onStatusToggle={()=>{setMyStatus(s=>!s);setPrivacySettings(p=>({...p,freeToChat:!p.freeToChat}));}}
               convos={convos} onOpenDM={openDM}
               groups={groups} onOpenGroup={openGroup} onCreateGroup={()=>setShowCreateGroup(true)} onDeleteGroup={deleteGroup}
               channels={channels} onOpenChannel={openChannel}
-              tier={tier} user={user}
+              tier={tier} user={user} onViewProfile={setViewingProfile}
             />}
             {tab==="notifs"  &&(showBcastSettings
               ?<BroadcastSettingsScreen bprefs={bprefs} onUpdate={setBprefs} onBack={()=>{setShowBcastSettings(false);}} tier={tier}/>
@@ -2540,7 +2702,20 @@ export default function App() {
       </div>
       {showCreate&&<CreateModal onPost={p=>{newPost(p);setSC(false);}} onClose={()=>setSC(false)} tier={tier} sharesUsed={sharesUsed}/>}
       {showCreateGroup&&<CreateGroupModal onClose={()=>setShowCreateGroup(false)} onCreate={createGroup} tier={tier}/>}
-      {detail&&<DetailModal p={detail} onClose={()=>setDetail(null)} onLike={like} onComment={comment}/>}
+      {detail&&<DetailModal p={detail} onClose={()=>setDetail(null)} onLike={like} onComment={comment} onViewProfile={setViewingProfile}/>}
+      {/* Public profile overlay — slides over everything */}
+      {viewingProfile&&(
+        <div className="mb" style={{position:"fixed",inset:0,zIndex:250,background:C.bg,overflowY:"auto"}}>
+          <PublicProfileScreen
+            profileUser={viewingProfile}
+            onBack={()=>setViewingProfile(null)}
+            myStatus={myStatus}
+            onOpenDM={person=>{setViewingProfile(null);openDM(person);}}
+            posts={posts}
+            currentUser={user}
+          />
+        </div>
+      )}
     </>
   );
 }
