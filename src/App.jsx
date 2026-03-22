@@ -11,13 +11,14 @@ const C = {
 
 // ─── TIERS ───────────────────────────────────────────────────
 // radius in km, ds = daily shares, cl = char limit, maxDur = max post duration in hours
+// burstMins = minimum minutes between posts (burst protection)
 const TIERS = [
-  { id:"free",      name:"Free",       price:"$0",     pn:"forever", r:1,       rl:"1 km",        ds:5,    cl:150,  maxDur:24,    color:"#6868a0", cs:"rgba(104,104,160,.12)", icon:"◎", zoom:14, tagline:"Your block",            features:["5 shares/day","150 chars/post","1 km radius","Posts last 24h","Approx. locations"] },
-  { id:"local",     name:"Local",      price:"$2.99",  pn:"/month",  r:5,       rl:"5 km",        ds:20,   cl:300,  maxDur:72,    color:"#3ddc84", cs:"rgba(61,220,132,.12)",  icon:"◉", zoom:12, tagline:"Your neighbourhood",    features:["20 shares/day","300 chars/post","5 km radius","Posts last up to 3 days","Full analytics"] },
-  { id:"city",      name:"City Mayor", price:"$6.99",  pn:"/month",  r:50,      rl:"50 km",       ds:100,  cl:600,  maxDur:168,   color:"#ff4d6d", cs:"rgba(255,77,109,.12)",  icon:"⬡", zoom:10, tagline:"Own your city",         features:["100 shares/day","600 chars/post","50 km radius","Posts last up to 7 days","Exact pins 📍","Mayor badge 🏙️"], hot:true },
-  { id:"country",   name:"Country",    price:"$14.99", pn:"/month",  r:500,     rl:"500 km",      ds:500,  cl:1000, maxDur:720,   color:"#f5c842", cs:"rgba(245,200,66,.12)",  icon:"◈", zoom:6,  tagline:"Rule the nation",       features:["500 shares/day","1,000 chars/post","500 km radius","Posts last up to 30 days","Exact pins 📍"] },
-  { id:"continent", name:"Continent",  price:"$29.99", pn:"/month",  r:5000,    rl:"5,000 km",    ds:2000, cl:2000, maxDur:720,   color:"#ff8c42", cs:"rgba(255,140,66,.12)",  icon:"◬", zoom:4,  tagline:"Across the continent",  features:["2,000 shares/day","2,000 chars/post","5,000 km radius","Posts last up to 30 days","Exact pins 📍"] },
-  { id:"world",     name:"World",      price:"$59.99", pn:"/month",  r:Infinity,rl:"Unlimited 🌍", ds:Infinity, cl:5000, maxDur:Infinity, color:"#ff42d4", cs:"rgba(255,66,212,.12)", icon:"✦", zoom:2, tagline:"No limits. Everywhere.", features:["Unlimited shares","5,000 chars/post","Global reach","Posts stay permanently","Exact locations"] },
+  { id:"free",      name:"Free",       price:"$0",     pn:"forever", r:1,       rl:"1 km",        scope:"Block",        scopeDesc:"Your immediate surroundings",  ds:5,    cl:150,  maxDur:24,    burstMins:15, color:"#6868a0", cs:"rgba(104,104,160,.12)", icon:"◎", zoom:14, tagline:"Your block",            features:["5 shares/day","150 chars/post","Block radius","Posts last 24h","Approx. locations"] },
+  { id:"local",     name:"Local",      price:"$2.99",  pn:"/month",  r:5,       rl:"5 km",        scope:"Neighbourhood",scopeDesc:"Your local area",               ds:20,   cl:300,  maxDur:72,    burstMins:10, color:"#3ddc84", cs:"rgba(61,220,132,.12)",  icon:"◉", zoom:12, tagline:"Your neighbourhood",    features:["20 shares/day","300 chars/post","Neighbourhood radius","Posts last 3 days","Full analytics"] },
+  { id:"city",      name:"City",       price:"$6.99",  pn:"/month",  r:50,      rl:"50 km",       scope:"City",         scopeDesc:"Your city and surroundings",    ds:100,  cl:600,  maxDur:168,   burstMins:5,  color:"#ff4d6d", cs:"rgba(255,77,109,.12)",  icon:"⬡", zoom:10, tagline:"Own your city",         features:["100 shares/day","600 chars/post","City radius","Posts last 7 days","Exact pins 📍","City badge 🏙️"], hot:true },
+  { id:"country",   name:"Region",     price:"$14.99", pn:"/month",  r:500,     rl:"500 km",      scope:"Region",       scopeDesc:"Your country or region",        ds:500,  cl:1000, maxDur:720,   burstMins:3,  color:"#f5c842", cs:"rgba(245,200,66,.12)",  icon:"◈", zoom:6,  tagline:"Rule your region",      features:["500 shares/day","1,000 chars/post","Region radius","Posts last 30 days","Exact pins 📍"] },
+  { id:"continent", name:"Continent",  price:"$29.99", pn:"/month",  r:5000,    rl:"5,000 km",    scope:"Continent",    scopeDesc:"Across your continent",         ds:2000, cl:2000, maxDur:720,   burstMins:2,  color:"#ff8c42", cs:"rgba(255,140,66,.12)",  icon:"◬", zoom:4,  tagline:"Across the continent",  features:["2,000 shares/day","2,000 chars/post","Continent radius","Posts last 30 days","Exact pins 📍"] },
+  { id:"world",     name:"World",      price:"$59.99", pn:"/month",  r:Infinity,rl:"Unlimited",   scope:"World",        scopeDesc:"Everywhere, no limits",         ds:Infinity, cl:5000, maxDur:Infinity, burstMins:1, color:"#ff42d4", cs:"rgba(255,66,212,.12)", icon:"✦", zoom:2, tagline:"No limits. Everywhere.", features:["Unlimited shares","5,000 chars/post","Global reach","Posts stay permanently","Exact locations"] },
 ];
 const TI = Object.fromEntries(TIERS.map((t,i)=>[t.id,i]));
 const gT = id => TIERS.find(t=>t.id===id)||TIERS[0];
@@ -147,7 +148,42 @@ const INIT_POSTS = [
   {id:8, user:"global_news",av:"GN",type:"text",cat:"events",   isAd:true,  durH:168, expiresAt:hrs(100), content:"🌍 World Summit happening 400km away — live stream link inside.",           dist:400,time:"1h ago",  likes:2400,lO:.3,nO:.2,reach:400,views:88000,tags:["news","world"], minT:"country", comments:[]},
 ];
 
-// ─── NEARBY PEOPLE (mock) ────────────────────────────────────
+// ─── WORLD FEED POSTS (mock — global, randomised) ────────────
+const WORLD_POSTS = [
+  {id:"w1", user:"tokyo_eats",     av:"TE", type:"photo", cat:"food",    country:"🇯🇵 Tokyo",     content:"Ramen at 2am hits different 🍜 This spot has been open since 1978.",           img:"https://picsum.photos/seed/ramen11/600/400",  likes:1204, views:8400, comments:[], time:"14m ago", tags:["ramen","tokyo"],   isAd:false, expiresAt:hrs(20)},
+  {id:"w2", user:"nyc_jobs",       av:"NJ", type:"text",  cat:"jobs",    country:"🇺🇸 New York",   content:"💼 Remote Frontend Engineer needed. $120-160k. React/TypeScript. DM open.",    likes:342,  views:2100, comments:[], time:"1h ago",  tags:["remote","react"],  isAd:true,  expiresAt:hrs(140)},
+  {id:"w3", user:"london_live",    av:"LL", type:"link",  cat:"music",   country:"🇬🇧 London",    content:"🎸 Sold out show tonight but we just dropped 20 more tickets. Go go go!",       link:"https://example.com", likes:891, views:5600, comments:[], time:"22m ago", tags:["gigs","london"],  isAd:true,  expiresAt:hrs(8)},
+  {id:"w4", user:"paris_style",    av:"PS", type:"photo", cat:"retail",  country:"🇫🇷 Paris",     content:"New collection dropped today 🧥 Sustainable fabrics, local designers only.",   img:"https://picsum.photos/seed/paris44/600/400",  likes:567,  views:3200, comments:[], time:"3h ago",  tags:["fashion","paris"], isAd:true,  expiresAt:hrs(60)},
+  {id:"w5", user:"sydney_surfer",  av:"SS", type:"photo", cat:"community",country:"🇦🇺 Sydney",   content:"Dawn patrol 🌊 6am Bondi, nobody out. Worth every alarm.",                     img:"https://picsum.photos/seed/surf55/600/400",   likes:2341, views:14000,comments:[], time:"4h ago",  tags:["surf","bondi"],    isAd:false, expiresAt:hrs(20)},
+  {id:"w6", user:"berlin_events",  av:"BE", type:"text",  cat:"events",  country:"🇩🇪 Berlin",    content:"🎉 Techno festival this weekend. 48h non-stop. Lineup dropped — it's insane.",  likes:1893, views:11000,comments:[], time:"2h ago",  tags:["techno","berlin"], isAd:true,  expiresAt:hrs(72)},
+  {id:"w7", user:"dubai_food",     av:"DF", type:"photo", cat:"food",    country:"🇦🇪 Dubai",     content:"Iftar spread tonight at the restaurant 🌙 Walk-ins welcome until 10pm.",        img:"https://picsum.photos/seed/dubai77/600/400",  likes:445,  views:2900, comments:[], time:"35m ago", tags:["iftar","dubai"],   isAd:true,  expiresAt:hrs(12)},
+  {id:"w8", user:"seoul_startup",  av:"SK", type:"text",  cat:"jobs",    country:"🇰🇷 Seoul",     content:"💼 Looking for a co-founder. AI/ML background. Equity-based. Serious inquiries only.", likes:234, views:1800, comments:[], time:"5h ago", tags:["startup","cofounder"], isAd:false, expiresAt:hrs(160)},
+  {id:"w9", user:"cape_town_art",  av:"CA", type:"photo", cat:"events",  country:"🇿🇦 Cape Town", content:"Pop-up gallery open this weekend 🎨 10 local artists, free entry, live music.", img:"https://picsum.photos/seed/art99/600/400",    likes:678,  views:4100, comments:[], time:"1h ago",  tags:["art","gallery"],   isAd:true,  expiresAt:hrs(48)},
+  {id:"w10",user:"amsterdam_bike", av:"AB", type:"photo", cat:"community",country:"🇳🇱 Amsterdam", content:"Found this canal view on my morning ride 🚲 The city never gets old.",          img:"https://picsum.photos/seed/amsterdam10/600/400",likes:3102,views:18000,comments:[], time:"2h ago",  tags:["amsterdam","bike"],isAd:false, expiresAt:hrs(22)},
+  {id:"w11",user:"mumbai_food",    av:"MF", type:"photo", cat:"food",    country:"🇮🇳 Mumbai",    content:"Street pav bhaji at its absolute best 🍛 Corner of Marine Drive, legend spot.", img:"https://picsum.photos/seed/mumbai11/600/400", likes:1567, views:9200, comments:[], time:"6h ago",  tags:["streetfood","mumbai"],isAd:false,expiresAt:hrs(18)},
+  {id:"w12",user:"toronto_sport",  av:"TS", type:"text",  cat:"sports",  country:"🇨🇦 Toronto",   content:"⚽ Watch party tonight for the match. Free entry, big screens, cold drinks. 7pm!", likes:334,  views:2200, comments:[], time:"3h ago",  tags:["watchparty","toronto"],isAd:true,expiresAt:hrs(10)},
+];
+
+// Weighted random shuffle — higher engagement = slightly higher chance of appearing
+const worldFeedShuffle = () => {
+  const scored = WORLD_POSTS.map(p => ({
+    ...p,
+    // weight: base random + small engagement bonus (capped so it doesn't dominate)
+    _w: Math.random() + Math.min(p.likes / 5000, 0.3)
+  }));
+  return scored.sort((a,b) => b._w - a._w).map(({_w,...p}) => p);
+};
+
+// Burst protection: check if user can post (15min cooldown default)
+const canPost = (lastPostTime, burstMins) => {
+  if (!lastPostTime) return { ok:true, waitMins:0 };
+  const elapsed = (Date.now() - lastPostTime) / 60000; // minutes
+  if (elapsed >= burstMins) return { ok:true, waitMins:0 };
+  return { ok:false, waitMins:Math.ceil(burstMins - elapsed) };
+};
+
+// Per-user feed cap: max posts from same user visible in one session
+const FEED_CAP_PER_USER = 3;
 const NEARBY_PEOPLE = [
   {id:"u1", user:"maya_r",    av:"MR", dist:0.1, status:true,  bio:"Coffee lover & street art hunter ☕",  tier:"local",    lastSeen:"now"},
   {id:"u2", user:"jono_w",    av:"JW", dist:0.3, status:true,  bio:"Music promoter. Always looking for cool spots 🎵", tier:"free", lastSeen:"now"},
@@ -550,58 +586,176 @@ function PostCard({post,onOpen,onLike,tier,isNextLocked}) {
 }
 
 // ─── FEED SCREEN ──────────────────────────────────────────────
-function FeedScreen({posts,onOpen,onLike,tier}) {
+function FeedScreen({posts,onOpen,onLike,tier,lastPostTime}) {
+  const [feedTab,setFeedTab]=useState("nearby"); // nearby | world
   const [cat,setCat]=useState("all");
   const [search,setSearch]=useState("");
+  const [worldPosts,setWorldPosts]=useState(()=>worldFeedShuffle());
   const t=gT(tier);
 
-  // Separate unlocked (within radius) vs locked posts
+  // ── Nearby feed logic ──────────────────────────────────────
   const unlocked=posts.filter(p=>!p.minT||TI[p.minT]<=TI[tier]);
   const locked=posts.filter(p=>p.minT&&TI[p.minT]>TI[tier]);
   const nextLocked=[...locked].sort((a,b)=>a.dist-b.dist)[0];
-
-  // Split live vs expired
   const isExp=p=>p.expiresAt&&fmtExpiry(p.expiresAt)?.expired===true;
   const live=unlocked.filter(p=>!isExp(p));
   const expiredPosts=unlocked.filter(isExp);
 
-  const filtered=live.filter(p=>{
-    if(cat!=="all"&&p.cat!==cat)return false;
-    if(search&&!p.content.toLowerCase().includes(search.toLowerCase())&&!p.user.toLowerCase().includes(search.toLowerCase()))return false;
+  // Per-user feed cap — no single user dominates
+  const applyUserCap = (arr) => {
+    const counts = {};
+    return arr.filter(p => {
+      counts[p.user] = (counts[p.user]||0) + 1;
+      return counts[p.user] <= FEED_CAP_PER_USER;
+    });
+  };
+
+  const nearbyFiltered = applyUserCap(
+    live.filter(p=>{
+      if(cat!=="all"&&p.cat!==cat) return false;
+      if(search&&!p.content.toLowerCase().includes(search.toLowerCase())&&
+         !p.user.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    }).sort((a,b)=>a.dist-b.dist)
+  );
+
+  // ── World feed logic ───────────────────────────────────────
+  const worldFiltered = worldPosts.filter(p=>{
+    if(cat!=="all"&&p.cat!==cat) return false;
+    if(search&&!p.content.toLowerCase().includes(search.toLowerCase())&&
+       !p.user.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
-  }).sort((a,b)=>a.dist-b.dist);
+  });
+
+  const burst=canPost(lastPostTime, t.burstMins);
 
   return (
     <div style={{padding:"12px 0 100px"}}>
+      {/* Feed tab switcher */}
+      <div style={{padding:"0 13px 12px"}}>
+        <div style={{display:"flex",background:C.surface,borderRadius:12,padding:3,border:`1px solid ${C.border}`}}>
+          {[["nearby","📍 Nearby"],["world","🌍 World"]].map(([id,label])=>(
+            <button key={id} onClick={()=>setFeedTab(id)}
+              style={{flex:1,padding:"9px 0",border:"none",cursor:"pointer",borderRadius:10,fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:13,transition:"all .2s",
+                background:feedTab===id?C.accent:"transparent",color:feedTab===id?"white":C.muted,
+                boxShadow:feedTab===id?`0 2px 10px ${C.aG}`:"none"}}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Search + category filters */}
       <div style={{padding:"0 13px 10px"}}>
         <Inp placeholder="🔍 Search posts…" value={search} onChange={e=>setSearch(e.target.value)} style={{marginBottom:10}}/>
         <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4}}>
           {CATS.map(c=><button key={c.id} onClick={()=>setCat(c.id)} style={{background:cat===c.id?`${c.color}20`:C.surface,border:`1px solid ${cat===c.id?c.color:C.border}`,borderRadius:20,padding:"5px 11px",color:cat===c.id?c.color:C.muted,fontSize:11,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0,transition:"all .2s"}}>{c.icon} {c.l}</button>)}
         </div>
       </div>
-      {/* Info bar */}
-      <div style={{margin:"0 13px 10px",background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:"8px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <span style={{color:C.muted,fontSize:12}}><span style={{color:C.green,fontWeight:600}}>{filtered.length} posts</span> within {t.rl}</span>
-        <div style={{display:"flex",gap:10}}>
-          {expiredPosts.length>0&&<span style={{color:C.muted,fontSize:11}}>⏹ {expiredPosts.length} expired</span>}
-          {locked.length>0&&<span style={{color:C.muted,fontSize:11}}>🔒 {locked.length} locked</span>}
+
+      {/* Burst protection warning */}
+      {!burst.ok&&(
+        <div style={{margin:"0 13px 10px",background:"rgba(255,140,66,.08)",border:"1px solid rgba(255,140,66,.25)",borderRadius:10,padding:"9px 13px",display:"flex",alignItems:"center",gap:9}}>
+          <span style={{fontSize:15}}>⏱</span>
+          <span style={{fontSize:12,color:C.orange}}>Next share available in <b>{burst.waitMins} min{burst.waitMins!==1?"s":""}</b> · keeps the feed fresh for everyone</span>
         </div>
+      )}
+
+      {/* ── NEARBY FEED ─────────────────────────────────────── */}
+      {feedTab==="nearby"&&(
+        <>
+          {/* Info bar */}
+          <div style={{margin:"0 13px 10px",background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:"8px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{color:C.muted,fontSize:12}}>
+              <span style={{color:C.green,fontWeight:600}}>{nearbyFiltered.length} posts</span>
+              {" "}· {t.scope}
+              <span style={{color:C.muted,fontSize:10}}> ({t.rl})</span>
+            </span>
+            <div style={{display:"flex",gap:10}}>
+              {expiredPosts.length>0&&<span style={{color:C.muted,fontSize:11}}>⏹ {expiredPosts.length} expired</span>}
+              {locked.length>0&&<span style={{color:C.muted,fontSize:11}}>🔒 {locked.length} locked</span>}
+            </div>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:10,padding:"0 13px"}}>
+            {nearbyFiltered.length===0&&(
+              <div style={{textAlign:"center",padding:"40px 20px"}}>
+                <div style={{fontSize:36,marginBottom:12}}>📍</div>
+                <div style={{fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:16,color:C.text,marginBottom:8}}>Nothing nearby yet</div>
+                <div style={{color:C.muted,fontSize:13,lineHeight:1.7,marginBottom:16}}>No posts in your {t.scope} right now. Check the 🌍 World feed to stay engaged, or be the first to share something here!</div>
+                <button onClick={()=>setFeedTab("world")} style={{background:C.aS,border:`1px solid ${C.accent}`,borderRadius:11,padding:"10px 22px",cursor:"pointer",color:C.accent,fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:13}}>Explore World Feed →</button>
+              </div>
+            )}
+            {nearbyFiltered.map(p=><PostCard key={p.id} post={p} onOpen={onOpen} onLike={onLike} tier={tier}/>)}
+            {/* Next locked teaser */}
+            {nextLocked&&cat==="all"&&!search&&<>
+              <div style={{display:"flex",alignItems:"center",gap:8,margin:"4px 0"}}><div style={{flex:1,height:1,background:C.border}}/><span style={{color:C.muted,fontSize:10,whiteSpace:"nowrap"}}>beyond your {t.scope}</span><div style={{flex:1,height:1,background:C.border}}/></div>
+              <PostCard post={nextLocked} onOpen={()=>{}} onLike={()=>{}} tier={tier} isNextLocked/>
+              {locked.length>1&&<div style={{textAlign:"center",padding:"10px 0",color:C.muted,fontSize:12}}>+ {locked.length-1} more locked · <span style={{color:C.accent,cursor:"pointer"}}>Upgrade to {TIERS[TI[tier]+1]?.scope||"World"}</span></div>}
+            </>}
+            {/* Expired posts dimmed */}
+            {expiredPosts.length>0&&cat==="all"&&!search&&<>
+              <div style={{display:"flex",alignItems:"center",gap:8,margin:"4px 0"}}><div style={{flex:1,height:1,background:C.border}}/><span style={{color:C.muted,fontSize:10,whiteSpace:"nowrap"}}>expired</span><div style={{flex:1,height:1,background:C.border}}/></div>
+              {expiredPosts.map(p=><div key={p.id} style={{opacity:.4,pointerEvents:"none"}}><PostCard post={p} onOpen={()=>{}} onLike={()=>{}} tier={tier}/></div>)}
+            </>}
+          </div>
+        </>
+      )}
+
+      {/* ── WORLD FEED ──────────────────────────────────────── */}
+      {feedTab==="world"&&(
+        <>
+          {/* World feed header */}
+          <div style={{margin:"0 13px 10px",background:C.surface,border:`1px solid ${C.border}`,borderRadius:9,padding:"8px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{color:C.muted,fontSize:12}}><span style={{color:C.teal,fontWeight:600}}>🌍 Global stream</span> · weighted by engagement</span>
+            <button onClick={()=>setWorldPosts(worldFeedShuffle())} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:7,padding:"3px 10px",cursor:"pointer",color:C.muted,fontSize:11,display:"flex",alignItems:"center",gap:5}}>↺ Refresh</button>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:10,padding:"0 13px"}}>
+            {worldFiltered.map(p=>(
+              <WorldPostCard key={p.id} post={p} onOpen={onOpen} onLike={onLike}/>
+            ))}
+            {worldFiltered.length===0&&<div style={{textAlign:"center",padding:"40px 20px",color:C.muted}}><div style={{fontSize:32,marginBottom:10}}>🔍</div>No world posts match this filter</div>}
+            {/* Refresh nudge at bottom */}
+            <button onClick={()=>setWorldPosts(worldFeedShuffle())} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:"13px 0",cursor:"pointer",color:C.muted,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginTop:4}}>↺ Load new posts from around the world</button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── WORLD POST CARD ──────────────────────────────────────────
+// Like PostCard but shows country flag instead of distance
+function WorldPostCard({post,onOpen,onLike}) {
+  const [liked,setLiked]=useState(false);
+  const handleLike=e=>{e.stopPropagation();setLiked(l=>!l);onLike&&onLike(post.id,!liked);};
+  const cat=gC(post.cat);
+  return(
+    <div className="pc" onClick={()=>onOpen&&onOpen(post)} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,overflow:"hidden"}}>
+      {post.isAd&&<div style={{background:`linear-gradient(90deg,${C.gS},transparent)`,borderBottom:`1px solid rgba(245,200,66,.1)`,padding:"3px 13px",display:"flex",alignItems:"center",gap:6}}><span style={{fontSize:9,color:C.gold,fontWeight:700,fontFamily:"Syne,sans-serif"}}>✦ SPONSORED</span><CatBadge id={post.cat}/></div>}
+      <div style={{padding:"11px 13px 9px",display:"flex",alignItems:"center",gap:9}}>
+        <div style={{width:36,height:36,borderRadius:11,flexShrink:0,background:`linear-gradient(135deg,${cat.color||C.accent},${C.purple})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700}}>{post.av}</div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:13,fontWeight:600}}>@{post.user}</div>
+          <div style={{fontSize:11,color:C.muted}}>{post.time}</div>
+        </div>
+        {/* Country instead of distance */}
+        <span style={{fontSize:11,color:C.muted,background:C.surface,border:`1px solid ${C.border}`,borderRadius:6,padding:"2px 7px",whiteSpace:"nowrap"}}>{post.country}</span>
       </div>
-      {/* Posts */}
-      <div style={{display:"flex",flexDirection:"column",gap:10,padding:"0 13px"}}>
-        {filtered.length===0&&<div style={{textAlign:"center",padding:"40px 20px",color:C.muted}}><div style={{fontSize:32,marginBottom:10}}>🔍</div>No posts found</div>}
-        {filtered.map(p=><PostCard key={p.id} post={p} onOpen={onOpen} onLike={onLike} tier={tier}/>)}
-        {/* Show ONE next locked post */}
-        {nextLocked&&cat==="all"&&!search&&<>
-          <div style={{display:"flex",alignItems:"center",gap:8,margin:"4px 0"}}><div style={{flex:1,height:1,background:C.border}}/><span style={{color:C.muted,fontSize:10,whiteSpace:"nowrap"}}>beyond your radius</span><div style={{flex:1,height:1,background:C.border}}/></div>
-          <PostCard post={nextLocked} onOpen={()=>{}} onLike={()=>{}} tier={tier} isNextLocked/>
-          {locked.length>1&&<div style={{textAlign:"center",padding:"10px 0",color:C.muted,fontSize:12}}>+ {locked.length-1} more post{locked.length>2?"s":""} beyond your radius · <span style={{color:C.accent,cursor:"pointer"}}>Upgrade to see them</span></div>}
-        </>}
-        {/* Expired posts — dimmed at bottom, owner can bump */}
-        {expiredPosts.length>0&&cat==="all"&&!search&&<>
-          <div style={{display:"flex",alignItems:"center",gap:8,margin:"4px 0"}}><div style={{flex:1,height:1,background:C.border}}/><span style={{color:C.muted,fontSize:10,whiteSpace:"nowrap"}}>expired</span><div style={{flex:1,height:1,background:C.border}}/></div>
-          {expiredPosts.map(p=><div key={p.id} style={{opacity:.4,pointerEvents:"none"}}><PostCard post={p} onOpen={()=>{}} onLike={()=>{}} tier={tier}/></div>)}
-        </>}
+      {post.img&&<div style={{margin:"0 12px 10px",borderRadius:11,overflow:"hidden"}}><img src={post.img} alt="" style={{width:"100%",display:"block",height:170,objectFit:"cover"}}/></div>}
+      <div style={{padding:"0 13px 10px"}}>
+        <p style={{fontSize:14,lineHeight:1.5,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{post.content}</p>
+        {post.link&&<div style={{marginTop:7,padding:"6px 10px",background:C.surface,borderRadius:7,border:`1px solid ${C.border}`,color:C.accent,fontSize:12,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>🔗 {post.link}</div>}
+      </div>
+      <div style={{padding:"7px 13px 11px",borderTop:`1px solid ${C.border}`,display:"flex",gap:12,alignItems:"center"}}>
+        <button onClick={handleLike} style={{background:"none",border:"none",cursor:"pointer",color:liked?C.accent:C.muted,fontSize:12,display:"flex",alignItems:"center",gap:4,fontFamily:"DM Sans,sans-serif"}}>{liked?"❤️":"🤍"} {post.likes+(liked?1:0)}</button>
+        <span style={{color:C.muted,fontSize:12}}>💬 {post.comments?.length||0}</span>
+        <span style={{color:C.muted,fontSize:11}}>👁 {post.views?.toLocaleString()}</span>
+        {(()=>{
+          const exp=post.expiresAt?fmtExpiry(post.expiresAt):null;
+          if(!exp) return <span style={{marginLeft:"auto",fontSize:10,color:C.teal,background:"rgba(45,212,191,.1)",border:"1px solid rgba(45,212,191,.2)",borderRadius:5,padding:"2px 6px"}}>♾️</span>;
+          if(exp.expired) return null;
+          return <span style={{marginLeft:"auto",fontSize:10,color:exp.color,background:`${exp.color}12`,border:`1px solid ${exp.color}33`,borderRadius:5,padding:"2px 6px",fontWeight:600}}>⏱ {exp.label}</span>;
+        })()}
       </div>
     </div>
   );
@@ -1090,10 +1244,10 @@ function UpgradeScreen({tier,onSelect}) {
                     {isCur&&<span style={{background:t.cs,color:t.color,border:`1px solid ${t.color}44`,borderRadius:5,padding:"1px 7px",fontSize:9,fontWeight:700,fontFamily:"Syne,sans-serif"}}>CURRENT</span>}
                   </div>
                   <div style={{color:C.muted,fontSize:11}}>{t.tagline}</div>
-                  <div style={{display:"flex",gap:9,marginTop:3}}>
-                    <span style={{color:t.color,fontSize:11,fontWeight:600}}>📍 {t.rl}</span>
+                  <div style={{display:"flex",gap:9,marginTop:3,flexWrap:"wrap",alignItems:"center"}}>
+                    <span style={{color:t.color,fontSize:12,fontWeight:700}}>{t.icon} {t.scope}</span>
+                    <span style={{color:C.muted,fontSize:10}}>· {t.rl}</span>
                     <span style={{color:C.muted,fontSize:11}}>· {t.ds===Infinity?"∞":t.ds} shares/day</span>
-                    <span style={{color:C.muted,fontSize:11}}>· {t.cl===5000?"5K":t.cl} chars</span>
                   </div>
                 </div>
                 <div style={{textAlign:"right",flexShrink:0}}>
@@ -1167,14 +1321,29 @@ function ProfileScreen({user,tier,onTab,sharesUsed,myStatus,onStatusToggle,priva
         )}
       </div>
 
-      {/* Stats */}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:14}}>
-        {[["Posts","3"],["Likes","247"],["Max Reach",`${t.r===Infinity?"∞":t.r} km`]].map(([l,v])=>(
-          <div key={l} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"13px 10px",textAlign:"center"}}>
-            <div style={{fontFamily:"Syne,sans-serif",fontWeight:800,fontSize:17,color:t.color}}>{v}</div>
-            <div style={{color:C.muted,fontSize:11,marginTop:3}}>{l}</div>
-          </div>
-        ))}
+      {/* Stats grid — 8 metrics */}
+      <div style={{marginBottom:14}}>
+        <div style={{fontSize:11,color:C.muted,fontWeight:600,marginBottom:8}}>YOUR STATS</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:9}}>
+          {[
+            {icon:"📝",label:"Posts shared",   value:"3",     color:t.color},
+            {icon:"❤️",label:"Total likes",    value:"402",   color:C.accent},
+            {icon:"💬",label:"Comments",        value:"42",    color:C.purple},
+            {icon:"👁", label:"Total views",    value:"1,886", color:C.blue},
+            {icon:"🔗",label:"Link clicks",    value:"312",   color:C.teal},
+            {icon:"◉", label:"Max reach",      value:t.r===Infinity?"∞ World":`${t.r} km`, color:C.green},
+            {icon:"⚡",label:"Active posts",   value:"2",     color:C.orange},
+            {icon:"🏆",label:"Longest post",   value:"6 days",color:C.gold},
+          ].map(s=>(
+            <div key={s.label} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 14px",display:"flex",alignItems:"center",gap:11}}>
+              <div style={{width:36,height:36,borderRadius:10,background:`${s.color}15`,border:`1px solid ${s.color}33`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>{s.icon}</div>
+              <div style={{minWidth:0}}>
+                <div style={{fontFamily:"Syne,sans-serif",fontWeight:800,fontSize:16,color:s.color,lineHeight:1}}>{s.value}</div>
+                <div style={{color:C.muted,fontSize:11,marginTop:3}}>{s.label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Daily share counter */}
@@ -1888,6 +2057,7 @@ export default function App() {
   const [upConf,setUpConf]=useState(null);
   const [sharesUsed,setSU]=useState(2);
   const [unread,setUnread]=useState(3);
+  const [lastPostTime,setLastPostTime]=useState(null); // burst protection
   // Messaging state
   const [myStatus,setMyStatus]=useState(false);
   const [convos,setConvos]=useState(INIT_CONVOS);
@@ -1919,7 +2089,14 @@ export default function App() {
     setPosts(ps=>ps.map(p=>p.id===pid?{...p,comments:[...p.comments,c]}:p));
     setDetail(prev=>prev?.id===pid?{...prev,comments:[...prev.comments,c]}:prev);
   };
-  const newPost=p=>{setPosts(ps=>[{id:Date.now(),user:user.name.toLowerCase().replace(/ /g,"_"),av:user.name.slice(0,2).toUpperCase(),dist:0,time:"just now",likes:0,reach:0,views:0,comments:[],lO:(Math.random()-.5)*.002,nO:(Math.random()-.5)*.002,...p},...ps]);setSU(s=>s+1);};
+  const newPost=p=>{
+    const t=gT(tier);
+    const burst=canPost(lastPostTime,t.burstMins);
+    if(!burst.ok) return; // blocked by burst protection
+    setPosts(ps=>[{id:Date.now(),user:user.name.toLowerCase().replace(/ /g,"_"),av:user.name.slice(0,2).toUpperCase(),dist:0,time:"just now",likes:0,reach:0,views:0,comments:[],lO:(Math.random()-.5)*.002,nO:(Math.random()-.5)*.002,...p},...ps]);
+    setSU(s=>s+1);
+    setLastPostTime(Date.now());
+  };
   const selectTier=id=>{setTier(id);setUpConf(id);setTimeout(()=>setUpConf(null),3000);};
 
   // Open or create a conversation with a nearby person
@@ -1968,7 +2145,7 @@ export default function App() {
         {upConf&&<div style={{position:"fixed",top:14,left:"50%",transform:"translateX(-50%)",zIndex:300,background:gT(upConf).cs,border:`1px solid ${gT(upConf).color}`,borderRadius:10,padding:"8px 14px",display:"flex",alignItems:"center",gap:7,boxShadow:`0 8px 22px ${gT(upConf).color}44`,animation:"fU .4s ease both",whiteSpace:"nowrap"}}>
           <span style={{fontSize:14}}>{gT(upConf).icon}</span>
           <span style={{fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:12,color:gT(upConf).color}}>Upgraded to {gT(upConf).name}!</span>
-          <span style={{color:C.muted,fontSize:10}}>📍 {gT(upConf).rl}</span>
+          <span style={{color:C.muted,fontSize:10}}>{gT(upConf).icon} {gT(upConf).scope}</span>
         </div>}
 
         {/* Header */}
@@ -1982,7 +2159,7 @@ export default function App() {
             </div>}
           </div>
           <div style={{display:"flex",alignItems:"center",gap:7}}>
-            <div onClick={()=>setTab("upgrade")} style={{cursor:"pointer",background:t.cs,border:`1px solid ${t.color}55`,borderRadius:7,padding:"3px 8px",fontSize:10,color:t.color,fontWeight:700,fontFamily:"Syne,sans-serif",display:"flex",alignItems:"center",gap:3}}>{t.icon} {t.rl}</div>
+            <div onClick={()=>setTab("upgrade")} style={{cursor:"pointer",background:t.cs,border:`1px solid ${t.color}55`,borderRadius:7,padding:"3px 8px",fontSize:10,color:t.color,fontWeight:700,fontFamily:"Syne,sans-serif",display:"flex",alignItems:"center",gap:3}}>{t.icon} {t.scope}</div>
             <button onClick={()=>setSC(true)} style={{background:C.accent,border:"none",borderRadius:9,width:30,height:30,cursor:"pointer",fontSize:17,color:"white",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 2px 9px ${C.aG}`}}>+</button>
           </div>
         </div>
@@ -1994,7 +2171,7 @@ export default function App() {
             <ChatScreen convo={activeChat} onBack={()=>setActiveChat(null)} onSend={sendMsg} myStatus={myStatus}/>
           ):(
             <>
-              {tab==="feed"    &&<FeedScreen    posts={posts} onOpen={setDetail} onLike={like} tier={tier}/>}
+              {tab==="feed"    &&<FeedScreen    posts={posts} onOpen={setDetail} onLike={like} tier={tier} lastPostTime={lastPostTime}/>}
               {tab==="map"     &&<MapView       posts={posts} loc={loc} tier={tier}/>}
               {tab==="nearby"  &&<NearbyPeopleScreen myStatus={myStatus} onOpenChat={openChatWith} tier={tier}/>}
               {tab==="messages"&&<InboxScreen   convos={convos} onOpenConvo={openConvo} myStatus={myStatus}/>}
