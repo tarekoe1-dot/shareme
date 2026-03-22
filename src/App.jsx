@@ -268,6 +268,7 @@ const INIT_CHANNELS = [
     following:false,
   },
 ];
+const MY_METRICS = [
   {id:"m1",content:"Tonight's special 🍝",time:"2h ago",  views:312, likes:67, reach:.92,comments:8, clicks:44},
   {id:"m2",content:"Flash Sale — 30% OFF", time:"Yesterday",views:891,likes:114,reach:.98,comments:22,clicks:201},
   {id:"m3",content:"Live music tonight 🎸",time:"2d ago",  views:534, likes:89, reach:.87,comments:12,clicks:67},
