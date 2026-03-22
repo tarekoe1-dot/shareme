@@ -214,7 +214,60 @@ const INIT_CONVOS = [
   },
 ];
 
-const MY_METRICS = [
+// ─── MOCK GROUPS ─────────────────────────────────────────────
+// Proximity groups — auto-expire when 0 active members for 24h
+// maxMembers is tier-based: Free=10, Local=30, City=100, Region=300, Continent=1000, World=∞
+const TIER_GROUP_MAX = {free:10,local:30,city:100,country:300,continent:1000,world:Infinity};
+
+const INIT_GROUPS = [
+  {
+    id:"g1", name:"🎸 Warehouse Show Tonight", emoji:"🎸", type:"proximity",
+    owner:"jono_w", ownerAv:"JW", dist:0.7, members:14, maxMembers:30,
+    desc:"Live music chat — who else is here tonight?",
+    msgs:[
+      {id:"gm1",user:"jono_w",   av:"JW",text:"Doors just opened! Queue is moving fast 🎉",time:"12m ago",mine:false},
+      {id:"gm2",user:"maya_r",   av:"MR",text:"Inside already, grab drinks first trust me",time:"10m ago",mine:false},
+      {id:"gm3",user:"carlos_m", av:"CM",text:"Which band is on first?",time:"8m ago",mine:false},
+    ],
+    active:true, createdAt:Date.now()-3600000, graceUntil:null,
+  },
+  {
+    id:"g2", name:"☕ Morning Coffee Corner", emoji:"☕", type:"proximity",
+    owner:"alex_k", ownerAv:"AK", dist:0.2, members:6, maxMembers:10,
+    desc:"Daily regulars at the coffee shop on 5th",
+    msgs:[
+      {id:"gm4",user:"alex_k",av:"AK",text:"Honey oat latte is back on the menu 🙌",time:"1h ago",mine:false},
+      {id:"gm5",user:"priya_s",av:"PS",text:"Finally!! See you there at 8",time:"58m ago",mine:false},
+    ],
+    active:true, createdAt:Date.now()-7200000, graceUntil:null,
+  },
+];
+
+// ─── MOCK CHANNELS ────────────────────────────────────────────
+// Channels — persistent, business/advertiser broadcast, followers receive updates
+const INIT_CHANNELS = [
+  {
+    id:"ch1", name:"La Trattoria 🍝", emoji:"🍝", owner:"la_trattoria", ownerAv:"LT",
+    dist:0.1, followers:234, verified:true, isAd:true,
+    desc:"Daily specials, reservations & offers from La Trattoria",
+    lastPost:{text:"Tonight: Truffle Rigatoni + free wine 🍷",time:"5m ago"},
+    following:false,
+  },
+  {
+    id:"ch2", name:"Warehouse Live 🎵", emoji:"🎵", owner:"warehouse_live", ownerAv:"WL",
+    dist:0.7, followers:891, verified:true, isAd:true,
+    desc:"Upcoming shows, tickets and venue news",
+    lastPost:{text:"New show announced — tickets live now 🎟️",time:"2h ago"},
+    following:true,
+  },
+  {
+    id:"ch3", name:"TechCorp Jobs 💼", emoji:"💼", owner:"techcorp", ownerAv:"TC",
+    dist:0.5, followers:445, verified:false, isAd:true,
+    desc:"Local job openings, tech roles and career events",
+    lastPost:{text:"Senior React Dev role open — remote OK",time:"1h ago"},
+    following:false,
+  },
+];
   {id:"m1",content:"Tonight's special 🍝",time:"2h ago",  views:312, likes:67, reach:.92,comments:8, clicks:44},
   {id:"m2",content:"Flash Sale — 30% OFF", time:"Yesterday",views:891,likes:114,reach:.98,comments:22,clicks:201},
   {id:"m3",content:"Live music tonight 🎸",time:"2d ago",  views:534, likes:89, reach:.87,comments:12,clicks:67},
@@ -444,12 +497,70 @@ function DetailModal({p,onClose,onLike,onComment}) {
   const cat=gC(p.cat);
   const toggle=()=>{setLiked(l=>!l);onLike(p.id,!liked);};
   const submit=()=>{if(!txt.trim())return;onComment(p.id,txt.trim());setTxt("");};
+
+  // ── Swipe-down-to-dismiss ─────────────────────────────────
+  const sheetRef=useRef(null);
+  const dragY=useRef(0);
+  const startY=useRef(0);
+  const [translateY,setTranslateY]=useState(0);
+
+  const onTouchStart=e=>{
+    // Only start drag if the sheet is scrolled to top
+    if(sheetRef.current?.scrollTop>0) return;
+    startY.current=e.touches[0].clientY;
+    dragY.current=0;
+  };
+  const onTouchMove=e=>{
+    if(sheetRef.current?.scrollTop>0) return;
+    const dy=e.touches[0].clientY-startY.current;
+    if(dy<0) return; // don't allow dragging up
+    dragY.current=dy;
+    setTranslateY(dy);
+  };
+  const onTouchEnd=()=>{
+    if(dragY.current>100) { onClose(); return; }
+    setTranslateY(0); // snap back
+    dragY.current=0;
+  };
+
+  // ── Browser back button ───────────────────────────────────
+  useEffect(()=>{
+    window.history.pushState({modal:"detail"},"");
+    const onPop=()=>onClose();
+    window.addEventListener("popstate",onPop);
+    return()=>{
+      window.removeEventListener("popstate",onPop);
+      // Only go back if we pushed a state (avoid double-pop)
+      if(window.history.state?.modal==="detail") window.history.back();
+    };
+  },[]);
+
   return (
     <div className="mb" onClick={onClose} style={{position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,.85)",backdropFilter:"blur(6px)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
-      <div className="ms" onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:480,background:C.card,borderRadius:"22px 22px 0 0",border:`1px solid ${C.border}`,maxHeight:"92vh",overflowY:"auto"}}>
-        <div style={{display:"flex",justifyContent:"center",padding:"10px 0 3px"}}><div style={{width:34,height:3,borderRadius:2,background:C.border}}/></div>
+      <div
+        className="ms"
+        ref={sheetRef}
+        onClick={e=>e.stopPropagation()}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        style={{width:"100%",maxWidth:480,background:C.card,borderRadius:"22px 22px 0 0",border:`1px solid ${C.border}`,maxHeight:"92vh",overflowY:"auto",
+          transform:`translateY(${translateY}px)`,
+          transition:translateY===0?"transform .3s cubic-bezier(.34,1.4,.64,1)":"none",
+          willChange:"transform"}}>
+
+        {/* ── Pull handle + close button row ── */}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px 4px",flexShrink:0}}>
+          {/* Close button — always visible, left side */}
+          <button onClick={onClose} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,width:34,height:34,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",color:C.muted,fontSize:18,flexShrink:0}}>←</button>
+          {/* Drag handle — centre */}
+          <div style={{width:36,height:4,borderRadius:2,background:C.border}}/>
+          {/* Report button — right side */}
+          <button onClick={e=>{e.stopPropagation();setReport(true);}} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:10,padding:"6px 10px",cursor:"pointer",color:C.muted,fontSize:11,display:"flex",alignItems:"center",gap:4}}>⚑ Report</button>
+        </div>
+
         {/* Header */}
-        <div style={{padding:"11px 18px 12px",display:"flex",alignItems:"center",gap:11}}>
+        <div style={{padding:"8px 18px 12px",display:"flex",alignItems:"center",gap:11}}>
           <div style={{width:44,height:44,borderRadius:13,flexShrink:0,background:`linear-gradient(135deg,${cat.color||C.accent},${C.purple})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,fontFamily:"Syne,sans-serif"}}>{p.av}</div>
           <div style={{flex:1}}>
             <div style={{display:"flex",alignItems:"center",gap:6}}>
@@ -458,10 +569,11 @@ function DetailModal({p,onClose,onLike,onComment}) {
             </div>
             <div style={{display:"flex",gap:6,alignItems:"center",marginTop:2}}><span style={{color:C.muted,fontSize:11}}>{p.time}</span><CatBadge id={p.cat}/></div>
           </div>
-          <button onClick={()=>setReport(true)} style={{background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:11,padding:"4px 8px"}}>⚑ Report</button>
         </div>
+
         {/* Image */}
         {p.img&&<div style={{margin:"0 14px 12px",borderRadius:14,overflow:"hidden"}}><img src={p.img} alt="" style={{width:"100%",display:"block",maxHeight:300,objectFit:"cover"}}/></div>}
+
         {/* Content */}
         <div style={{padding:"0 18px 12px"}}>
           <p style={{fontSize:15,lineHeight:1.65,marginBottom:8}}>{p.content}</p>
@@ -479,29 +591,31 @@ function DetailModal({p,onClose,onLike,onComment}) {
               return <span style={{fontSize:12,color:exp.color,fontWeight:600}}>⏱ {exp.label}</span>;
             })()}
           </div>
-          {/* Bump action — for advertiser posts approaching expiry */}
+          {/* Bump action */}
           {p.isAd&&p.expiresAt&&(()=>{
             const exp=fmtExpiry(p.expiresAt);
             if(!exp||exp.expired) return null;
             const hoursLeft=(p.expiresAt-Date.now())/3600000;
-            if(hoursLeft>48) return null; // only show when within 48h of expiry
+            if(hoursLeft>48) return null;
             return(
-              <div style={{background:"rgba(245,200,66,.08)",border:"1px solid rgba(245,200,66,.25)",borderRadius:10,padding:"10px 13px",display:"flex",alignItems:"center",gap:10}}>
+              <div style={{background:"rgba(245,200,66,.08)",border:"1px solid rgba(245,200,66,.25)",borderRadius:10,padding:"10px 13px",display:"flex",alignItems:"center",gap:10,marginTop:8}}>
                 <span style={{fontSize:16}}>🔄</span>
                 <div style={{flex:1}}>
                   <div style={{fontSize:12,fontWeight:600,color:C.gold}}>Expiring soon</div>
-                  <div style={{fontSize:11,color:C.muted,marginTop:2}}>Bump this post to push it back to the top of the feed and reset its duration.</div>
+                  <div style={{fontSize:11,color:C.muted,marginTop:2}}>Bump to push back to the top and reset duration.</div>
                 </div>
                 <button style={{background:C.gold,border:"none",borderRadius:8,padding:"7px 12px",cursor:"pointer",color:"#08080e",fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:12,flexShrink:0}}>Bump ↑</button>
               </div>
             );
           })()}
         </div>
+
         {/* Actions */}
         <div style={{padding:"10px 18px 14px",borderTop:`1px solid ${C.border}`,display:"flex",gap:9}}>
           <button onClick={toggle} style={{flex:1,background:liked?C.aS:C.surface,border:`1px solid ${liked?C.accent:C.border}`,borderRadius:10,padding:"10px 0",cursor:"pointer",color:liked?C.accent:C.muted,fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:13,transition:"all .2s",display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>{liked?"❤️":"🤍"} {p.likes+(liked?1:0)}</button>
           <button style={{flex:1,background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 0",cursor:"pointer",color:C.muted,fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center",gap:7}}>↗ Share</button>
         </div>
+
         {/* Comments */}
         <div style={{padding:"0 18px 36px",borderTop:`1px solid ${C.border}`}}>
           <div style={{fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:13,margin:"12px 0 10px"}}>💬 {p.comments?.length||0} Comments</div>
@@ -1552,161 +1666,348 @@ function PrivacySettingsScreen({tier,privacySettings,onUpdate,onBack}) {
   );
 }
 
-// ─── NEARBY PEOPLE SCREEN ────────────────────────────────────
-function NearbyPeopleScreen({myStatus,onOpenChat,tier}) {
+// ─── UNIFIED CHAT TAB ─────────────────────────────────────────
+function ChatTab({myStatus,onStatusToggle,convos,onOpenDM,onOpenGroup,onOpenChannel,groups,channels,tier,user,onCreateGroup,onDeleteGroup}) {
+  const [section,setSection]=useState("people"); // people | groups | channels | dms
   const t=gT(tier);
-  const chatOpen=people=>{
-    if(!myStatus) return;
-    if(!people.status) return;
-    onOpenChat(people);
+  const myGroup=groups.find(g=>g.owner===user?.name?.toLowerCase().replace(/ /g,"_"));
+  const totalUnread=convos.reduce((a,c)=>a+(c.unread||0),0);
+  const unreadGroups=groups.reduce((a,g)=>a+(g.unread||0),0);
+
+  // Check if convo is expired (grace ended) vs just out of range
+  const convoState=(c)=>{
+    if(c.graceUntil&&Date.now()>c.graceUntil) return "history"; // read-only history
+    if(c.graceUntil&&Date.now()<c.graceUntil) return "grace";
+    if(!c.active) return "inactive";
+    return "active";
   };
 
-  return (
-    <div style={{padding:"16px 14px 100px"}}>
-      {/* My status banner */}
-      <div style={{background:myStatus?`linear-gradient(135deg,rgba(61,220,132,.15),rgba(61,220,132,.05))`:`${C.card}`,border:`1px solid ${myStatus?C.green:C.border}`,borderRadius:14,padding:"14px 16px",marginBottom:18,display:"flex",alignItems:"center",gap:12}}>
-        <div style={{position:"relative",flexShrink:0}}>
-          <div style={{width:44,height:44,borderRadius:13,background:`linear-gradient(135deg,${t.color},${C.purple})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,fontFamily:"Syne,sans-serif"}}>ME</div>
-          {myStatus&&<div style={{position:"absolute",bottom:-2,right:-2,width:12,height:12,borderRadius:"50%",background:C.green,border:`2px solid ${C.bg}`,boxShadow:`0 0 6px ${C.green}`}}/>}
-        </div>
+  return(
+    <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 125px)"}}>
+      {/* My status strip */}
+      <div onClick={onStatusToggle} style={{background:myStatus?"rgba(61,220,132,.08)":C.surface,borderBottom:`1px solid ${myStatus?"rgba(61,220,132,.2)":C.border}`,padding:"10px 14px",display:"flex",alignItems:"center",gap:11,cursor:"pointer",transition:"all .2s",flexShrink:0}}>
+        <div style={{width:36,height:36,borderRadius:11,background:myStatus?"rgba(61,220,132,.15)":C.card,border:`1px solid ${myStatus?C.green:C.border}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,transition:"all .2s"}}>💬</div>
         <div style={{flex:1}}>
-          <div style={{fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:14,display:"flex",alignItems:"center",gap:7}}>
-            Your Status
-            {myStatus&&<span style={{background:"rgba(61,220,132,.15)",color:C.green,border:"1px solid rgba(61,220,132,.3)",borderRadius:5,padding:"1px 6px",fontSize:9,fontWeight:700}}>● ACTIVE</span>}
-          </div>
-          <div style={{color:C.muted,fontSize:12,marginTop:2}}>
-            {myStatus?"💬 Free to chat — visible to people nearby":"Status off — toggle in Profile to connect"}
-          </div>
+          <div style={{fontSize:13,fontWeight:600,color:myStatus?C.green:C.text,fontFamily:"Syne,sans-serif"}}>Free to Chat {myStatus&&<span style={{fontSize:9,background:"rgba(61,220,132,.2)",color:C.green,borderRadius:4,padding:"1px 5px",fontWeight:700}}>● ON</span>}</div>
+          <div style={{fontSize:11,color:C.muted,marginTop:1}}>{myStatus?"Visible to people nearby · tap to turn off":"Off — tap to become visible nearby"}</div>
+        </div>
+        <div style={{width:40,height:24,borderRadius:12,background:myStatus?C.green:C.border,position:"relative",flexShrink:0,transition:"background .25s"}}>
+          <div style={{position:"absolute",top:2,left:myStatus?18:2,width:20,height:20,borderRadius:"50%",background:"white",transition:"left .25s",boxShadow:"0 1px 3px rgba(0,0,0,.3)"}}/>
         </div>
       </div>
 
-      {!myStatus&&(
-        <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:"14px 16px",marginBottom:16,textAlign:"center"}}>
-          <div style={{fontSize:28,marginBottom:8}}>💬</div>
-          <div style={{fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:15,marginBottom:5}}>You're invisible right now</div>
-          <div style={{color:C.muted,fontSize:13,lineHeight:1.6,marginBottom:12}}>Turn on "Free to Chat" in your Profile to appear to people nearby and start messaging.</div>
-        </div>
-      )}
-
-      {/* Info */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-        <div style={{fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:14}}>People nearby</div>
-        <span style={{color:C.muted,fontSize:11}}>within {t.rl} · {NEARBY_PEOPLE.filter(p=>p.status).length} free to chat</span>
+      {/* Section tabs */}
+      <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,flexShrink:0,background:C.bg}}>
+        {[
+          ["people","👥 People"],
+          ["groups","🏠 Groups",unreadGroups],
+          ["channels","📢 Channels"],
+          ["dms","💬 DMs",totalUnread],
+        ].map(([id,label,badge])=>(
+          <button key={id} onClick={()=>setSection(id)} style={{flex:1,padding:"10px 0",border:"none",background:"none",cursor:"pointer",fontSize:11,fontWeight:section===id?700:400,fontFamily:"Syne,sans-serif",color:section===id?C.accent:C.muted,borderBottom:section===id?`2px solid ${C.accent}`:"2px solid transparent",transition:"all .2s",position:"relative"}}>
+            {label}
+            {badge>0&&<span style={{marginLeft:4,background:C.accent,color:"white",borderRadius:5,padding:"0 4px",fontSize:9,fontWeight:700}}>{badge}</span>}
+          </button>
+        ))}
       </div>
 
-      {/* People list */}
-      <div style={{display:"flex",flexDirection:"column",gap:10}}>
-        {NEARBY_PEOPLE.sort((a,b)=>a.dist-b.dist).map(person=>{
-          const canMsg=myStatus&&person.status;
-          return (
-            <div key={person.id}
-              onClick={()=>chatOpen(person)}
-              style={{background:C.card,border:`1px solid ${canMsg?`rgba(61,220,132,.25)`:C.border}`,borderRadius:14,padding:"13px 14px",display:"flex",alignItems:"center",gap:12,cursor:canMsg?"pointer":"default",transition:"all .2s",opacity:!myStatus&&!person.status?.6:1}}>
-              {/* Avatar with status dot */}
-              <div style={{position:"relative",flexShrink:0}}>
-                <div style={{width:44,height:44,borderRadius:13,background:`linear-gradient(135deg,${person.status?C.green:C.muted},${C.purple})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700,opacity:person.status?1:.6}}>{person.av}</div>
-                <div style={{position:"absolute",bottom:-2,right:-2,width:11,height:11,borderRadius:"50%",background:person.status?C.green:C.border,border:`2px solid ${C.bg}`,boxShadow:person.status?`0 0 6px ${C.green}`:""}}/>
-              </div>
-              {/* Info */}
-              <div style={{flex:1,minWidth:0}}>
-                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
-                  <span style={{fontWeight:600,fontSize:14}}>@{person.user}</span>
-                  {person.status&&<span style={{background:"rgba(61,220,132,.12)",color:C.green,border:"1px solid rgba(61,220,132,.25)",borderRadius:4,padding:"1px 5px",fontSize:9,fontWeight:700}}>💬 Free to chat</span>}
-                  <TBadge id={person.tier}/>
-                </div>
-                <div style={{fontSize:12,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{person.bio}</div>
-                <div style={{fontSize:11,color:C.muted,marginTop:3}}>
-                  {(()=>{const b=distBand(person.dist);return <span style={{color:b.color}}>{b.label}</span>;})()}
-                  {" · "}{person.lastSeen==="now"?<span style={{color:C.green}}>● online now</span>:person.lastSeen}
-                </div>
-              </div>
-              {/* Action */}
-              <div style={{flexShrink:0}}>
-                {canMsg?(
-                  <div style={{background:"rgba(61,220,132,.15)",border:"1px solid rgba(61,220,132,.3)",borderRadius:8,padding:"6px 10px",color:C.green,fontSize:11,fontWeight:700}}>Message</div>
-                ):(
-                  <div style={{color:C.muted,fontSize:11,textAlign:"center"}}>
-                    {!person.status?"Busy":"Status off"}
+      <div style={{flex:1,overflowY:"auto",padding:"12px 14px 100px"}}>
+
+        {/* ── PEOPLE ── */}
+        {section==="people"&&(
+          <div style={{display:"flex",flexDirection:"column",gap:9}}>
+            {!myStatus&&<div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:12,padding:"13px 15px",textAlign:"center"}}>
+              <div style={{fontSize:24,marginBottom:8}}>👻</div>
+              <div style={{fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:14,marginBottom:4}}>You're in ghost mode</div>
+              <div style={{color:C.muted,fontSize:12,lineHeight:1.6}}>Turn on Free to Chat above to see and be seen by people nearby.</div>
+            </div>}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontSize:11,color:C.muted,fontWeight:600}}>NEARBY · {t.scope}</span>
+              <span style={{fontSize:11,color:C.green}}>{NEARBY_PEOPLE.filter(p=>p.status).length} free to chat</span>
+            </div>
+            {NEARBY_PEOPLE.sort((a,b)=>a.dist-b.dist).map(person=>{
+              const canMsg=myStatus&&person.status;
+              const band=distBand(person.dist);
+              return(
+                <div key={person.id} onClick={()=>canMsg&&onOpenDM(person)}
+                  style={{background:C.card,border:`1px solid ${canMsg?"rgba(61,220,132,.25)":C.border}`,borderRadius:13,padding:"12px 13px",display:"flex",alignItems:"center",gap:11,cursor:canMsg?"pointer":"default",transition:"all .2s",opacity:!myStatus&&!person.status?.5:1}}>
+                  <div style={{position:"relative",flexShrink:0}}>
+                    <div style={{width:42,height:42,borderRadius:12,background:`linear-gradient(135deg,${person.status?C.green:C.muted},${C.purple})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,opacity:person.status?1:.6}}>{person.av}</div>
+                    <div style={{position:"absolute",bottom:-2,right:-2,width:10,height:10,borderRadius:"50%",background:person.status?C.green:C.border,border:`2px solid ${C.bg}`,boxShadow:person.status?`0 0 5px ${C.green}`:""}}/> 
                   </div>
-                )}
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
+                      <span style={{fontWeight:600,fontSize:13}}>@{person.user}</span>
+                      {person.status&&<span style={{background:"rgba(61,220,132,.1)",color:C.green,fontSize:9,fontWeight:700,borderRadius:4,padding:"1px 5px"}}>Free to chat</span>}
+                    </div>
+                    <div style={{fontSize:11,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{person.bio}</div>
+                    <span style={{fontSize:10,color:band.color}}>{band.label}</span>
+                  </div>
+                  {canMsg&&<div style={{background:"rgba(61,220,132,.12)",border:"1px solid rgba(61,220,132,.25)",borderRadius:7,padding:"5px 9px",color:C.green,fontSize:11,fontWeight:700,flexShrink:0}}>DM</div>}
+                </div>
+              );
+            })}
+            <div style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 13px",display:"flex",gap:8,alignItems:"flex-start",marginTop:4}}>
+              <span style={{fontSize:13,flexShrink:0}}>📍</span>
+              <span style={{fontSize:11,color:C.muted,lineHeight:1.5}}>Both must have Free to Chat on · Messages stay as read-only history when out of range · New replies need proximity again</span>
+            </div>
+          </div>
+        )}
+
+        {/* ── GROUPS ── */}
+        {section==="groups"&&(
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {/* Create / manage group */}
+            {myGroup?(
+              <div style={{background:"rgba(61,220,132,.06)",border:"1px solid rgba(61,220,132,.2)",borderRadius:13,padding:"12px 14px",display:"flex",alignItems:"center",gap:11}}>
+                <div style={{width:38,height:38,borderRadius:11,background:"rgba(61,220,132,.15)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>{myGroup.emoji}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:13,fontWeight:700,color:C.green}}>Your group: {myGroup.name}</div>
+                  <div style={{fontSize:11,color:C.muted,marginTop:1}}>{myGroup.members} members · active</div>
+                </div>
+                <button onClick={()=>onDeleteGroup(myGroup.id)} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 9px",cursor:"pointer",color:C.muted,fontSize:11}}>Delete</button>
+              </div>
+            ):(
+              <button onClick={onCreateGroup} style={{background:C.aS,border:`1px solid ${C.accent}44`,borderRadius:13,padding:"13px 15px",cursor:"pointer",display:"flex",alignItems:"center",gap:11,width:"100%",transition:"all .2s"}}>
+                <div style={{width:38,height:38,borderRadius:11,background:C.aS,border:`1px solid ${C.accent}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>+</div>
+                <div style={{textAlign:"left"}}>
+                  <div style={{fontSize:13,fontWeight:700,color:C.accent}}>Create a Group</div>
+                  <div style={{fontSize:11,color:C.muted,marginTop:1}}>One group per user · auto-expires when empty 24h</div>
+                </div>
+              </button>
+            )}
+
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontSize:11,color:C.muted,fontWeight:600}}>NEARBY GROUPS · {t.scope}</span>
+              <span style={{fontSize:11,color:C.muted}}>{groups.length} active</span>
+            </div>
+
+            {groups.map(g=>(
+              <div key={g.id} onClick={()=>onOpenGroup(g)}
+                style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:13,overflow:"hidden",cursor:"pointer",transition:"all .2s"}}>
+                <div style={{padding:"12px 13px",display:"flex",alignItems:"center",gap:11}}>
+                  <div style={{width:42,height:42,borderRadius:12,background:`linear-gradient(135deg,${C.purple},${C.blue})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{g.emoji}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:600,fontSize:13,marginBottom:2}}>{g.name}</div>
+                    <div style={{fontSize:11,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{g.desc}</div>
+                  </div>
+                  <div style={{textAlign:"right",flexShrink:0}}>
+                    <div style={{fontSize:11,color:C.green,fontWeight:600}}>{g.members}/{g.maxMembers}</div>
+                    <div style={{fontSize:10,color:C.muted}}>members</div>
+                    {(()=>{const band=distBand(g.dist);return <div style={{fontSize:9,color:band.color,marginTop:2}}>{band.label}</div>})()}
+                  </div>
+                </div>
+                {g.msgs?.length>0&&<div style={{padding:"8px 13px 11px",borderTop:`1px solid ${C.border}`,fontSize:12,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                  <b style={{color:C.text}}>@{g.msgs[g.msgs.length-1].user}:</b> {g.msgs[g.msgs.length-1].text}
+                </div>}
+              </div>
+            ))}
+            {groups.length===0&&<div style={{textAlign:"center",padding:"30px 20px",color:C.muted}}><div style={{fontSize:32,marginBottom:10}}>🏠</div><div>No groups in your {t.scope} yet — create one!</div></div>}
+          </div>
+        )}
+
+        {/* ── CHANNELS ── */}
+        {section==="channels"&&(
+          <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            <div style={{fontSize:11,color:C.muted,marginBottom:4,lineHeight:1.6}}>
+              Channels are one-way broadcasts from local businesses. Follow to receive their updates.
+            </div>
+            {channels.map(ch=>(
+              <div key={ch.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:"13px 14px",display:"flex",alignItems:"center",gap:11,transition:"all .2s"}}>
+                <div style={{width:44,height:44,borderRadius:13,background:`linear-gradient(135deg,${C.accent},${C.purple})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{ch.emoji}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
+                    <span style={{fontWeight:600,fontSize:13}}>{ch.name}</span>
+                    {ch.verified&&<span style={{color:C.green,fontSize:11}}>✓</span>}
+                    <span style={{fontSize:9,color:C.gold,background:C.gS,borderRadius:4,padding:"1px 5px",fontWeight:700}}>AD</span>
+                  </div>
+                  <div style={{fontSize:11,color:C.muted,marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ch.lastPost.text}</div>
+                  <div style={{display:"flex",gap:10}}>
+                    <span style={{fontSize:10,color:C.muted}}>👥 {ch.followers.toLocaleString()}</span>
+                    <span style={{fontSize:10,color:C.muted}}>{ch.lastPost.time}</span>
+                    {(()=>{const b=distBand(ch.dist);return <span style={{fontSize:10,color:b.color}}>{b.label}</span>})()}
+                  </div>
+                </div>
+                <button onClick={()=>onOpenChannel(ch)} style={{background:ch.following?C.surface:C.aS,border:`1px solid ${ch.following?C.border:C.accent}`,borderRadius:8,padding:"6px 11px",cursor:"pointer",color:ch.following?C.muted:C.accent,fontSize:11,fontWeight:700,fontFamily:"Syne,sans-serif",flexShrink:0,whiteSpace:"nowrap"}}>
+                  {ch.following?"Following":"Follow"}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── DMs ── */}
+        {section==="dms"&&(
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {convos.length===0&&<div style={{textAlign:"center",padding:"40px 20px",color:C.muted}}><div style={{fontSize:32,marginBottom:10}}>💬</div><div style={{fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:15,marginBottom:5}}>No messages yet</div><div style={{fontSize:12,lineHeight:1.6}}>Go to People, turn on Free to Chat, and tap DM on someone nearby.</div></div>}
+            {convos.map(c=>{
+              const state=convoState(c);
+              const last=c.msgs[c.msgs.length-1];
+              return(
+                <div key={c.id} onClick={()=>onOpenDM(c.with,c)}
+                  style={{background:c.unread>0?C.aS:C.card,border:`1px solid ${c.unread>0?C.aG:C.border}`,borderRadius:13,padding:"11px 13px",display:"flex",alignItems:"center",gap:11,cursor:"pointer",opacity:state==="history"?.6:1,transition:"all .2s"}}>
+                  <div style={{position:"relative",flexShrink:0}}>
+                    <div style={{width:42,height:42,borderRadius:12,background:`linear-gradient(135deg,${state==="active"?C.green:C.muted},${C.purple})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700}}>{c.with.av}</div>
+                    <div style={{position:"absolute",bottom:-2,right:-2,width:10,height:10,borderRadius:"50%",background:state==="active"?C.green:C.muted,border:`2px solid ${C.bg}`}}/>
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
+                      <span style={{fontWeight:600,fontSize:13}}>@{c.with.user}</span>
+                      <span style={{fontSize:10,color:C.muted}}>{last?.time}</span>
+                    </div>
+                    <div style={{fontSize:12,color:c.unread>0?C.text:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{last?.mine?"You: ":""}{last?.text}</div>
+                    <div style={{fontSize:10,marginTop:3,color:state==="active"?C.green:state==="grace"?C.gold:state==="history"?C.muted:C.muted}}>
+                      {state==="active"&&"● In range · active"}
+                      {state==="grace"&&"⏳ Grace period · replying soon"}
+                      {state==="history"&&"📖 Read-only history · meet again to continue"}
+                      {state==="inactive"&&"⚫ Out of range"}
+                    </div>
+                  </div>
+                  {c.unread>0&&<div style={{width:18,height:18,borderRadius:"50%",background:C.accent,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"white",fontWeight:700,flexShrink:0}}>{c.unread}</div>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── GROUP CHAT SCREEN ────────────────────────────────────────
+function GroupChatScreen({group,onBack,user,onLeave}) {
+  const [msgs,setMsgs]=useState(group.msgs||[]);
+  const [txt,setTxt]=useState("");
+  const bottomRef=useRef(null);
+  useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
+  const send=()=>{
+    if(!txt.trim())return;
+    const m={id:Date.now(),user:user.name.toLowerCase().replace(/ /g,"_"),av:user.name.slice(0,2).toUpperCase(),text:txt.trim(),time:"just now",mine:true};
+    setMsgs(p=>[...p,m]);setTxt("");
+  };
+  return(
+    <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 125px)"}}>
+      <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:11,background:C.bg,flexShrink:0}}>
+        <button onClick={onBack} style={{background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:20,padding:"0 4px"}}>←</button>
+        <div style={{width:36,height:36,borderRadius:11,background:`linear-gradient(135deg,${C.purple},${C.blue})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>{group.emoji}</div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontWeight:700,fontSize:14,fontFamily:"Syne,sans-serif",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{group.name}</div>
+          <div style={{fontSize:11,color:C.green}}>● {group.members} members · proximity group</div>
+        </div>
+        <button onClick={onLeave} style={{background:"none",border:`1px solid ${C.border}`,borderRadius:8,padding:"5px 9px",cursor:"pointer",color:C.muted,fontSize:11}}>Leave</button>
+      </div>
+      <div style={{background:"rgba(104,104,160,.06)",borderBottom:`1px solid ${C.border}`,padding:"7px 14px",fontSize:11,color:C.muted,display:"flex",gap:7,alignItems:"center",flexShrink:0}}>
+        <span>📍</span><span>Group disappears when everyone leaves · 24h grace period after last member exits</span>
+      </div>
+      <div style={{flex:1,overflowY:"auto",padding:"12px 14px 8px",display:"flex",flexDirection:"column",gap:7}}>
+        <div style={{textAlign:"center",marginBottom:6}}><span style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:7,padding:"5px 11px",fontSize:11,color:C.muted}}>You joined · {group.members} people here</span></div>
+        {msgs.map(m=>(
+          <div key={m.id} style={{display:"flex",justifyContent:m.mine?"flex-end":"flex-start",gap:7,alignItems:"flex-end"}}>
+            {!m.mine&&<div style={{width:26,height:26,borderRadius:8,background:`linear-gradient(135deg,${C.purple},${C.blue})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,flexShrink:0}}>{m.av}</div>}
+            <div style={{maxWidth:"72%"}}>
+              {!m.mine&&<div style={{fontSize:10,color:C.muted,marginBottom:2}}>@{m.user}</div>}
+              <div style={{background:m.mine?C.accent:C.card,border:m.mine?"none":`1px solid ${C.border}`,borderRadius:m.mine?"13px 13px 3px 13px":"13px 13px 13px 3px",padding:"8px 12px",boxShadow:m.mine?`0 2px 8px ${C.aG}`:""}}>
+                <div style={{fontSize:13,lineHeight:1.5,color:m.mine?"white":C.text}}>{m.text}</div>
+                <div style={{fontSize:9,color:m.mine?"rgba(255,255,255,.55)":C.muted,marginTop:3,textAlign:m.mine?"right":"left"}}>{m.time}</div>
               </div>
             </div>
-          );
-        })}
+          </div>
+        ))}
+        <div ref={bottomRef}/>
       </div>
-
-      {/* Proximity note */}
-      <div style={{marginTop:18,background:C.surface,border:`1px solid ${C.border}`,borderRadius:11,padding:"11px 14px",display:"flex",gap:10,alignItems:"flex-start"}}>
-        <span style={{fontSize:16,flexShrink:0}}>📍</span>
-        <div style={{fontSize:12,color:C.muted,lineHeight:1.6}}>
-          Messaging requires <b style={{color:C.text}}>both users</b> to have "Free to Chat" on and be within radius. Conversations stay active for <b style={{color:C.text}}>24 hours</b> after one person leaves range.
-        </div>
+      <div style={{padding:"10px 14px",borderTop:`1px solid ${C.border}`,display:"flex",gap:8,background:C.bg,flexShrink:0}}>
+        <input value={txt} onChange={e=>setTxt(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder={`Message ${group.name}…`}
+          style={{flex:1,background:C.surface,border:`1px solid ${C.border}`,borderRadius:22,padding:"10px 16px",color:C.text,fontFamily:"DM Sans,sans-serif",fontSize:13,outline:"none"}}/>
+        <button onClick={send} disabled={!txt.trim()} style={{background:C.accent,border:"none",borderRadius:"50%",width:40,height:40,cursor:"pointer",fontSize:16,color:"white",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:`0 2px 9px ${C.aG}`,opacity:txt.trim()?1:.4}}>↑</button>
       </div>
     </div>
   );
 }
 
-// ─── INBOX SCREEN ─────────────────────────────────────────────
-function InboxScreen({convos,onOpenConvo,myStatus}) {
-  const totalUnread=convos.reduce((a,c)=>a+c.unread,0);
-  return (
-    <div style={{padding:"16px 14px 100px"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-        <div>
-          <div style={{fontFamily:"Syne,sans-serif",fontWeight:800,fontSize:20}}>Messages</div>
-          {totalUnread>0&&<div style={{color:C.muted,fontSize:12,marginTop:2}}>{totalUnread} unread</div>}
+// ─── CREATE GROUP MODAL ───────────────────────────────────────
+function CreateGroupModal({onClose,onCreate,tier}) {
+  const t=gT(tier);
+  const maxM=TIER_GROUP_MAX[tier]||10;
+  const [name,setName]=useState("");
+  const [emoji,setEmoji]=useState("💬");
+  const [desc,setDesc]=useState("");
+  const emojis=["💬","🎵","🍽️","⚽","🎉","☕","🎸","🏃","📚","🎮","🌿","✨"];
+  return(
+    <div className="mb" onClick={onClose} style={{position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,.8)",backdropFilter:"blur(5px)",display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+      <div className="ms" onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:480,background:C.card,borderRadius:"20px 20px 0 0",border:`1px solid ${C.border}`,padding:22,paddingBottom:32}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <div style={{fontFamily:"Syne,sans-serif",fontWeight:800,fontSize:18}}>Create Group</div>
+          <button onClick={onClose} style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,width:28,height:28,cursor:"pointer",color:C.muted,fontSize:16}}>×</button>
         </div>
-        {!myStatus&&<div style={{background:C.aS,border:`1px solid ${C.aG}`,borderRadius:8,padding:"5px 10px",fontSize:11,color:C.accent}}>Status off</div>}
+        <div style={{background:"rgba(104,104,160,.08)",border:`1px solid ${C.border}`,borderRadius:10,padding:"10px 13px",marginBottom:14,fontSize:12,color:C.muted,display:"flex",gap:8}}>
+          <span>💡</span><span>You can only have <b style={{color:C.text}}>one active group</b> at a time. Delete it to create a new one. Max <b style={{color:t.color}}>{maxM=== Infinity?"unlimited":maxM} members</b> on your {t.name} plan.</span>
+        </div>
+        {/* Emoji picker */}
+        <div style={{marginBottom:12}}>
+          <div style={{fontSize:11,color:C.muted,marginBottom:7,fontWeight:600}}>GROUP ICON</div>
+          <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+            {emojis.map(e=><button key={e} onClick={()=>setEmoji(e)} style={{width:38,height:38,borderRadius:10,border:`1px solid ${emoji===e?C.accent:C.border}`,background:emoji===e?C.aS:C.surface,cursor:"pointer",fontSize:18}}>{e}</button>)}
+          </div>
+        </div>
+        <Inp placeholder="Group name (e.g. 🎸 Tonight's Show)" value={name} onChange={e=>setName(e.target.value)} style={{marginBottom:10}}/>
+        <Inp placeholder="Short description (optional)" value={desc} onChange={e=>setDesc(e.target.value)} style={{marginBottom:16}}/>
+        <Btn onClick={()=>{if(!name.trim())return;onCreate({name:name.trim(),emoji,desc:desc.trim()});onClose();}} disabled={!name.trim()} style={{width:"100%",padding:13}}>Create Group</Btn>
       </div>
-
-      {convos.length===0?(
-        <div style={{textAlign:"center",padding:"50px 20px",color:C.muted}}>
-          <div style={{fontSize:36,marginBottom:12}}>💬</div>
-          <div style={{fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:16,marginBottom:6}}>No messages yet</div>
-          <div style={{fontSize:13,lineHeight:1.6}}>Find people nearby with "Free to Chat" on and start a conversation.</div>
-        </div>
-      ):(
-        <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {convos.map(c=>{
-            const last=c.msgs[c.msgs.length-1];
-            const inGrace=c.graceUntil&&Date.now()<c.graceUntil;
-            const expired=c.graceUntil&&Date.now()>c.graceUntil;
-            return (
-              <div key={c.id} onClick={()=>onOpenConvo(c)}
-                style={{background:c.unread>0?C.aS:C.card,border:`1px solid ${c.unread>0?C.aG:expired?C.border:C.border}`,borderRadius:14,padding:"12px 14px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",transition:"all .2s",opacity:expired?.5:1}}>
-                <div style={{position:"relative",flexShrink:0}}>
-                  <div style={{width:44,height:44,borderRadius:13,background:`linear-gradient(135deg,${c.with.status?C.green:C.muted},${C.purple})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:700}}>{c.with.av}</div>
-                  <div style={{position:"absolute",bottom:-2,right:-2,width:11,height:11,borderRadius:"50%",background:c.with.status&&c.active?C.green:C.muted,border:`2px solid ${C.bg}`}}/>
-                </div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
-                    <span style={{fontWeight:600,fontSize:14}}>@{c.with.user}</span>
-                    <span style={{fontSize:10,color:C.muted}}>{last?.time}</span>
-                  </div>
-                  <div style={{fontSize:12,color:c.unread>0?C.text:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{last?.mine?"You: ":""}{last?.text}</div>
-                  {inGrace&&<div style={{fontSize:10,color:C.gold,marginTop:3}}>⏳ Grace period active — chat continues</div>}
-                  {expired&&<div style={{fontSize:10,color:C.muted,marginTop:3}}>⚫ Conversation ended · out of range</div>}
-                  {!c.with.status&&c.active&&<div style={{fontSize:10,color:C.muted,marginTop:3}}>Status off · can't reply until they're back</div>}
-                </div>
-                {c.unread>0&&<div style={{width:20,height:20,borderRadius:"50%",background:C.accent,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"white",fontWeight:700,flexShrink:0}}>{c.unread}</div>}
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
 
-// ─── CHAT SCREEN ──────────────────────────────────────────────
+// ─── CHANNEL SCREEN ───────────────────────────────────────────
+function ChannelScreen({channel,onBack,onToggleFollow}) {
+  const [following,setFollowing]=useState(channel.following);
+  const posts=[
+    {id:1,text:channel.lastPost.text,time:channel.lastPost.time,likes:234},
+    {id:2,text:"Join us this Friday for a special evening 🌟",time:"Yesterday",likes:89},
+    {id:3,text:"New menu items added — come try them!",time:"3 days ago",likes:156},
+  ];
+  return(
+    <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 125px)"}}>
+      <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:11,background:C.bg,flexShrink:0}}>
+        <button onClick={onBack} style={{background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:20,padding:"0 4px"}}>←</button>
+        <div style={{width:38,height:38,borderRadius:11,background:`linear-gradient(135deg,${C.accent},${C.purple})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{channel.emoji}</div>
+        <div style={{flex:1}}>
+          <div style={{fontWeight:700,fontSize:14,fontFamily:"Syne,sans-serif",display:"flex",alignItems:"center",gap:6}}>{channel.name}{channel.verified&&<span style={{color:C.green,fontSize:12}}>✓</span>}</div>
+          <div style={{fontSize:11,color:C.muted}}>👥 {channel.followers.toLocaleString()} followers · {(()=>{const b=distBand(channel.dist);return <span style={{color:b.color}}>{b.label}</span>})()}</div>
+        </div>
+        <button onClick={()=>{setFollowing(f=>!f);onToggleFollow(channel.id);}}
+          style={{background:following?C.surface:C.aS,border:`1px solid ${following?C.border:C.accent}`,borderRadius:9,padding:"7px 13px",cursor:"pointer",color:following?C.muted:C.accent,fontFamily:"Syne,sans-serif",fontWeight:700,fontSize:12,flexShrink:0}}>
+          {following?"Following ✓":"Follow"}
+        </button>
+      </div>
+      <div style={{background:"rgba(245,200,66,.04)",borderBottom:"1px solid rgba(245,200,66,.1)",padding:"7px 14px",fontSize:11,color:C.muted,display:"flex",gap:7,flexShrink:0}}>
+        <span>📢</span><span>Channel — one-way broadcast. Follow to receive updates when nearby.</span>
+      </div>
+      <div style={{flex:1,overflowY:"auto",padding:"12px 14px 100px",display:"flex",flexDirection:"column",gap:10}}>
+        {posts.map(p=>(
+          <div key={p.id} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:"13px 14px"}}>
+            <p style={{fontSize:14,lineHeight:1.6,marginBottom:8}}>{p.text}</p>
+            <div style={{display:"flex",gap:12,alignItems:"center"}}>
+              <span style={{fontSize:11,color:C.muted}}>❤️ {p.likes}</span>
+              <span style={{fontSize:11,color:C.muted}}>{p.time}</span>
+              <span style={{marginLeft:"auto",fontSize:9,color:C.gold,background:C.gS,borderRadius:4,padding:"1px 6px",fontWeight:700}}>BROADCAST</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── DM CHAT SCREEN ───────────────────────────────────────────
 function ChatScreen({convo,onBack,onSend,myStatus}) {
   const [txt,setTxt]=useState("");
   const [msgs,setMsgs]=useState(convo.msgs);
   const bottomRef=useRef(null);
-  const canSend=myStatus&&convo.with.status&&convo.active;
-  const inGrace=convo.graceUntil&&Date.now()<convo.graceUntil;
-
   useEffect(()=>{bottomRef.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
+
+  const isHistory=convo.graceUntil&&Date.now()>convo.graceUntil;
+  const inGrace=convo.graceUntil&&Date.now()<convo.graceUntil;
+  const canSend=!isHistory&&myStatus&&convo.with.status&&convo.active;
 
   const send=()=>{
     if(!txt.trim()||!canSend)return;
@@ -1719,57 +2020,59 @@ function ChatScreen({convo,onBack,onSend,myStatus}) {
   const person=convo.with;
   return (
     <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 125px)"}}>
-      {/* Chat header */}
+      {/* Header */}
       <div style={{padding:"10px 14px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",gap:11,background:C.bg,flexShrink:0}}>
-        <button onClick={onBack} style={{background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:20,padding:"0 4px",display:"flex",alignItems:"center"}}>←</button>
+        <button onClick={onBack} style={{background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:20,padding:"0 4px"}}>←</button>
         <div style={{position:"relative",flexShrink:0}}>
-          <div style={{width:38,height:38,borderRadius:11,background:`linear-gradient(135deg,${person.status?C.green:C.muted},${C.purple})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700}}>{person.av}</div>
-          <div style={{position:"absolute",bottom:-2,right:-2,width:10,height:10,borderRadius:"50%",background:person.status&&convo.active?C.green:C.muted,border:`2px solid ${C.bg}`}}/>
+          <div style={{width:38,height:38,borderRadius:11,background:`linear-gradient(135deg,${isHistory?C.muted:person.status?C.green:C.muted},${C.purple})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700}}>{person.av}</div>
+          <div style={{position:"absolute",bottom:-2,right:-2,width:10,height:10,borderRadius:"50%",background:isHistory?C.muted:canSend?C.green:C.muted,border:`2px solid ${C.bg}`}}/>
         </div>
         <div style={{flex:1}}>
           <div style={{fontWeight:600,fontSize:14,fontFamily:"Syne,sans-serif"}}>@{person.user}</div>
-          <div style={{fontSize:11,color:person.status&&convo.active?C.green:C.muted}}>
-            {person.status&&convo.active?(()=>{const b=distBand(person.dist);return `● Free to chat · ${b.label}`;})():person.status?"Status on · out of range":"Status off"}
+          <div style={{fontSize:11,color:isHistory?C.muted:canSend?C.green:C.gold}}>
+            {isHistory?"📖 Read-only history":inGrace?"⏳ Grace period active":canSend?(()=>{const b=distBand(person.dist);return `● ${b.label}`;})():"Out of range"}
           </div>
         </div>
-        {/* Proximity band badge */}
-        {(()=>{const b=distBand(person.dist);return(
-          <div style={{background:`${b.color}18`,border:`1px solid ${b.color}44`,borderRadius:8,padding:"5px 10px",textAlign:"center",flexShrink:0}}>
-            <div style={{fontSize:11,color:b.color,fontWeight:700,whiteSpace:"nowrap"}}>{b.label}</div>
-            <div style={{fontSize:9,color:C.muted}}>in range</div>
+        {!isHistory&&(()=>{const b=distBand(person.dist);return(
+          <div style={{background:`${b.color}18`,border:`1px solid ${b.color}33`,borderRadius:8,padding:"5px 10px",textAlign:"center",flexShrink:0}}>
+            <div style={{fontSize:10,color:b.color,fontWeight:700,whiteSpace:"nowrap"}}>{b.label}</div>
           </div>
         );})()}
       </div>
 
-      {/* Grace / status banners */}
-      {inGrace&&(
-        <div style={{background:"rgba(245,200,66,.08)",borderBottom:`1px solid rgba(245,200,66,.2)`,padding:"8px 14px",display:"flex",alignItems:"center",gap:8}}>
-          <span style={{fontSize:14}}>⏳</span>
-          <span style={{fontSize:12,color:C.gold}}>Grace period active — chat stays open for 24h after leaving range</span>
+      {/* Status banners */}
+      {isHistory&&(
+        <div style={{background:"rgba(104,104,160,.06)",borderBottom:`1px solid ${C.border}`,padding:"9px 14px",display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
+          <span>📖</span>
+          <span style={{fontSize:12,color:C.muted}}>This conversation is <b style={{color:C.text}}>read-only history</b>. Get back in range together to continue chatting.</span>
         </div>
       )}
-      {!canSend&&!inGrace&&(
-        <div style={{background:"rgba(104,104,160,.08)",borderBottom:`1px solid ${C.border}`,padding:"8px 14px",display:"flex",alignItems:"center",gap:8}}>
-          <span style={{fontSize:14}}>🔒</span>
+      {inGrace&&!isHistory&&(
+        <div style={{background:"rgba(245,200,66,.06)",borderBottom:"1px solid rgba(245,200,66,.2)",padding:"8px 14px",display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
+          <span>⏳</span><span style={{fontSize:12,color:C.gold}}>Grace period active — chat stays open 24h after leaving range</span>
+        </div>
+      )}
+      {!canSend&&!inGrace&&!isHistory&&(
+        <div style={{background:"rgba(104,104,160,.06)",borderBottom:`1px solid ${C.border}`,padding:"8px 14px",display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
+          <span>🔒</span>
           <span style={{fontSize:12,color:C.muted}}>
-            {!myStatus?"Turn on your status to reply":!person.status?"@"+person.user+" has their status off":"Out of range — you have 24h to reply"}
+            {!myStatus?"Turn on Free to Chat to reply":!person.status?"@"+person.user+" has their status off":"Out of range · 24h grace starts now"}
           </span>
         </div>
       )}
 
       {/* Messages */}
-      <div style={{flex:1,overflowY:"auto",padding:"14px 14px 8px",display:"flex",flexDirection:"column",gap:8}}>
-        {/* Intro note */}
-        <div style={{textAlign:"center",marginBottom:8}}>
-          <div style={{display:"inline-block",background:C.surface,border:`1px solid ${C.border}`,borderRadius:8,padding:"6px 12px",fontSize:11,color:C.muted}}>
-            💬 You matched in range · both had "Free to Chat" on
-          </div>
+      <div style={{flex:1,overflowY:"auto",padding:"12px 14px 8px",display:"flex",flexDirection:"column",gap:8}}>
+        <div style={{textAlign:"center",marginBottom:6}}>
+          <span style={{background:C.surface,border:`1px solid ${C.border}`,borderRadius:7,padding:"5px 11px",fontSize:11,color:C.muted}}>
+            {isHistory?"📖 Chat history — you were in range":"💬 You matched in range · both had Free to Chat on"}
+          </span>
         </div>
         {msgs.map(m=>(
           <div key={m.id} style={{display:"flex",justifyContent:m.mine?"flex-end":"flex-start"}}>
-            <div style={{maxWidth:"75%",background:m.mine?C.accent:C.card,border:m.mine?"none":`1px solid ${C.border}`,borderRadius:m.mine?"14px 14px 3px 14px":"14px 14px 14px 3px",padding:"9px 13px",boxShadow:m.mine?`0 2px 10px ${C.aG}`:""}} >
+            <div style={{maxWidth:"75%",background:m.mine?C.accent:C.card,border:m.mine?"none":`1px solid ${C.border}`,borderRadius:m.mine?"14px 14px 3px 14px":"14px 14px 14px 3px",padding:"9px 13px",boxShadow:m.mine?`0 2px 10px ${C.aG}`:"",opacity:isHistory?.75:1}}>
               <div style={{fontSize:14,lineHeight:1.5,color:m.mine?"white":C.text}}>{m.text}</div>
-              <div style={{fontSize:10,color:m.mine?"rgba(255,255,255,.6)":C.muted,marginTop:4,textAlign:m.mine?"right":"left"}}>{m.time}</div>
+              <div style={{fontSize:10,color:m.mine?"rgba(255,255,255,.55)":C.muted,marginTop:4,textAlign:m.mine?"right":"left"}}>{m.time}</div>
             </div>
           </div>
         ))}
@@ -1778,15 +2081,20 @@ function ChatScreen({convo,onBack,onSend,myStatus}) {
 
       {/* Input */}
       <div style={{padding:"10px 14px",borderTop:`1px solid ${C.border}`,display:"flex",gap:8,background:C.bg,flexShrink:0}}>
-        <input
-          value={txt} onChange={e=>setTxt(e.target.value)}
-          onKeyDown={e=>e.key==="Enter"&&send()}
-          disabled={!canSend&&!inGrace}
-          placeholder={canSend||inGrace?"Message @"+person.user+"…":"Messaging unavailable"}
-          style={{flex:1,background:C.surface,border:`1px solid ${canSend||inGrace?C.border:C.border}`,borderRadius:22,padding:"10px 16px",color:C.text,fontFamily:"DM Sans,sans-serif",fontSize:13,outline:"none",opacity:canSend||inGrace?1:.5}}
-        />
-        <button onClick={send} disabled={!canSend&&!inGrace||!txt.trim()}
-          style={{background:C.accent,border:"none",borderRadius:"50%",width:40,height:40,cursor:"pointer",fontSize:16,color:"white",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:`0 2px 9px ${C.aG}`,opacity:canSend&&txt.trim()?1:.4}}>↑</button>
+        {isHistory?(
+          <div style={{flex:1,background:C.surface,border:`1px solid ${C.border}`,borderRadius:22,padding:"10px 16px",fontSize:13,color:C.muted,display:"flex",alignItems:"center",gap:8}}>
+            <span>📖</span><span>Read-only · get back in range to continue</span>
+          </div>
+        ):(
+          <>
+            <input value={txt} onChange={e=>setTxt(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()}
+              disabled={!canSend&&!inGrace}
+              placeholder={canSend||inGrace?"Message @"+person.user+"…":"Messaging unavailable"}
+              style={{flex:1,background:C.surface,border:`1px solid ${C.border}`,borderRadius:22,padding:"10px 16px",color:C.text,fontFamily:"DM Sans,sans-serif",fontSize:13,outline:"none",opacity:canSend||inGrace?1:.5}}/>
+            <button onClick={send} disabled={(!canSend&&!inGrace)||!txt.trim()}
+              style={{background:C.accent,border:"none",borderRadius:"50%",width:40,height:40,cursor:"pointer",fontSize:16,color:"white",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:`0 2px 9px ${C.aG}`,opacity:(canSend||inGrace)&&txt.trim()?1:.4}}>↑</button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -2058,21 +2366,19 @@ export default function App() {
   const [sharesUsed,setSU]=useState(2);
   const [unread,setUnread]=useState(3);
   const [lastPostTime,setLastPostTime]=useState(null); // burst protection
-  // Messaging state
+  // Messaging + groups state
   const [myStatus,setMyStatus]=useState(false);
   const [convos,setConvos]=useState(INIT_CONVOS);
-  const [activeChat,setActiveChat]=useState(null);
+  const [groups,setGroups]=useState(INIT_GROUPS);
+  const [channels,setChannels]=useState(INIT_CHANNELS);
+  const [activeChat,setActiveChat]=useState(null); // {type:"dm"|"group"|"channel", data}
+  const [showCreateGroup,setShowCreateGroup]=useState(false);
   const [msgUnread,setMsgUnread]=useState(1);
-  // Privacy — ghost by default, nothing broadcast until user explicitly shares
+  // Privacy — ghost by default
   const [privacySettings,setPrivacySettings]=useState({
-    defaultZone:"area",
-    freeToChat:false,
-    showZoneOnPost:true,
-    roundTimestamps:true,
-    personalMode:true,
-    allowExactPin:false,
+    defaultZone:"area", freeToChat:false, showZoneOnPost:true,
+    roundTimestamps:true, personalMode:true, allowExactPin:false,
   });
-  // Broadcast notification preferences
   const [bprefs,setBprefs]=useState({...DEFAULT_BPREFS});
   const [showOnboarding,setShowOnboarding]=useState(false);
   const [showBcastSettings,setShowBcastSettings]=useState(false);
@@ -2092,51 +2398,67 @@ export default function App() {
   const newPost=p=>{
     const t=gT(tier);
     const burst=canPost(lastPostTime,t.burstMins);
-    if(!burst.ok) return; // blocked by burst protection
+    if(!burst.ok) return;
     setPosts(ps=>[{id:Date.now(),user:user.name.toLowerCase().replace(/ /g,"_"),av:user.name.slice(0,2).toUpperCase(),dist:0,time:"just now",likes:0,reach:0,views:0,comments:[],lO:(Math.random()-.5)*.002,nO:(Math.random()-.5)*.002,...p},...ps]);
-    setSU(s=>s+1);
-    setLastPostTime(Date.now());
+    setSU(s=>s+1); setLastPostTime(Date.now());
   };
   const selectTier=id=>{setTier(id);setUpConf(id);setTimeout(()=>setUpConf(null),3000);};
 
-  // Open or create a conversation with a nearby person
-  const openChatWith=person=>{
-    if(!myStatus||!person.status)return;
-    const existing=convos.find(c=>c.with.id===person.id);
-    if(existing){
-      setActiveChat(existing);
-      setConvos(cs=>cs.map(c=>c.id===existing.id?{...c,unread:0}:c));
+  // DM handlers
+  const openDM=(person,existingConvo)=>{
+    if(existingConvo){
+      setActiveChat({type:"dm",data:existingConvo});
+      setConvos(cs=>cs.map(c=>c.id===existingConvo.id?{...c,unread:0}:c));
+      setMsgUnread(0);
     } else {
-      const newConvo={id:"c"+Date.now(),with:person,msgs:[],unread:0,graceUntil:null,active:true};
-      setConvos(cs=>[newConvo,...cs]);
-      setActiveChat(newConvo);
+      if(!myStatus||!person.status)return;
+      const existing=convos.find(c=>c.with.id===person.id);
+      if(existing){
+        setActiveChat({type:"dm",data:existing});
+        setConvos(cs=>cs.map(c=>c.id===existing.id?{...c,unread:0}:c));
+      } else {
+        const nc={id:"c"+Date.now(),with:person,msgs:[],unread:0,graceUntil:null,active:true};
+        setConvos(cs=>[nc,...cs]);
+        setActiveChat({type:"dm",data:nc});
+      }
     }
-    setTab("messages");
+    setTab("chat");
   };
-
-  const openConvo=convo=>{
-    setActiveChat(convo);
-    setConvos(cs=>cs.map(c=>c.id===convo.id?{...c,unread:0}:c));
-    setMsgUnread(0);
-  };
-
   const sendMsg=(convoId,msg)=>{
     setConvos(cs=>cs.map(c=>c.id===convoId?{...c,msgs:[...c.msgs,msg]}:c));
-    if(activeChat?.id===convoId) setActiveChat(prev=>({...prev,msgs:[...prev.msgs,msg]}));
+    setActiveChat(prev=>prev?.data?.id===convoId?{...prev,data:{...prev.data,msgs:[...prev.data.msgs,msg]}}:prev);
   };
 
+  // Group handlers
+  const openGroup=g=>{setActiveChat({type:"group",data:g});setTab("chat");};
+  const createGroup=({name,emoji,desc})=>{
+    const myName=user.name.toLowerCase().replace(/ /g,"_");
+    const g={id:"g"+Date.now(),name,emoji,desc,owner:myName,ownerAv:user.name.slice(0,2).toUpperCase(),
+      dist:0,members:1,maxMembers:TIER_GROUP_MAX[tier]||10,msgs:[],active:true,createdAt:Date.now(),graceUntil:null};
+    setGroups(gs=>[g,...gs]);
+  };
+  const deleteGroup=id=>setGroups(gs=>gs.filter(g=>g.id!==id));
+
+  // Channel handlers
+  const openChannel=ch=>{setActiveChat({type:"channel",data:ch});setTab("chat");};
+  const toggleFollow=id=>setChannels(cs=>cs.map(c=>c.id===id?{...c,following:!c.following}:c));
+
   const t=gT(tier);
+  const totalChatUnread=convos.reduce((a,c)=>a+(c.unread||0),0)+groups.reduce((a,g)=>a+(g.unread||0),0);
+
   const tabs=[
     {id:"feed",    icon:"◉",  label:"Feed"},
     {id:"map",     icon:"◎",  label:"Map"},
-    {id:"nearby",  icon:"💬", label:"Chat",  badge:myStatus?NEARBY_PEOPLE.filter(p=>p.status).length:0, badgeColor:C.green},
-    {id:"messages",icon:"✉️", label:"Inbox", badge:msgUnread},
+    {id:"chat",    icon:"💬", label:"Chat",  badge:totalChatUnread, badgeColor:C.green},
     {id:"upgrade", icon:"✦",  label:"Upgrade"},
     {id:"profile", icon:"○",  label:"Profile"},
   ];
 
   if(!authed) return <><GS/><AuthScreen onAuth={u=>{setUser(u);setAuthed(true);setShowOnboarding(true);}}/></>;
   if(showOnboarding) return <><GS/><OnboardingScreen onDone={p=>{setBprefs(p);setShowOnboarding(false);}}/></>;
+
+  // Determine if we're showing an active chat/group/channel thread
+  const showThread=activeChat&&tab==="chat";
 
   return (
     <>
@@ -2148,11 +2470,10 @@ export default function App() {
           <span style={{color:C.muted,fontSize:10}}>{gT(upConf).icon} {gT(upConf).scope}</span>
         </div>}
 
-        {/* Header */}
-        <div style={{padding:"10px 13px 8px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",background:C.bg,position:"sticky",top:0,zIndex:50}}>
+        {/* Header — hidden when thread is open */}
+        {!showThread&&<div style={{padding:"10px 13px 8px",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"space-between",background:C.bg,position:"sticky",top:0,zIndex:50}}>
           <div style={{display:"flex",alignItems:"center",gap:9}}>
             <div style={{fontFamily:"Syne,sans-serif",fontWeight:800,fontSize:20,letterSpacing:-1}}>share<span style={{color:C.accent}}>me</span></div>
-            {/* Status pill in header */}
             {myStatus&&<div style={{background:"rgba(61,220,132,.12)",border:"1px solid rgba(61,220,132,.3)",borderRadius:6,padding:"2px 8px",display:"flex",alignItems:"center",gap:4}}>
               <div style={{width:6,height:6,borderRadius:"50%",background:C.green,boxShadow:`0 0 4px ${C.green}`}}/>
               <span style={{fontSize:9,color:C.green,fontWeight:700,fontFamily:"Syne,sans-serif"}}>FREE TO CHAT</span>
@@ -2162,48 +2483,62 @@ export default function App() {
             <div onClick={()=>setTab("upgrade")} style={{cursor:"pointer",background:t.cs,border:`1px solid ${t.color}55`,borderRadius:7,padding:"3px 8px",fontSize:10,color:t.color,fontWeight:700,fontFamily:"Syne,sans-serif",display:"flex",alignItems:"center",gap:3}}>{t.icon} {t.scope}</div>
             <button onClick={()=>setSC(true)} style={{background:C.accent,border:"none",borderRadius:9,width:30,height:30,cursor:"pointer",fontSize:17,color:"white",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 2px 9px ${C.aG}`}}>+</button>
           </div>
-        </div>
+        </div>}
 
         {/* Content */}
-        <div style={{flex:1,overflowY:tab==="map"||activeChat?"hidden":"auto"}}>
-          {/* Chat thread takes priority when open */}
-          {activeChat&&tab==="messages"?(
-            <ChatScreen convo={activeChat} onBack={()=>setActiveChat(null)} onSend={sendMsg} myStatus={myStatus}/>
-          ):(
-            <>
-              {tab==="feed"    &&<FeedScreen    posts={posts} onOpen={setDetail} onLike={like} tier={tier} lastPostTime={lastPostTime}/>}
-              {tab==="map"     &&<MapView       posts={posts} loc={loc} tier={tier}/>}
-              {tab==="nearby"  &&<NearbyPeopleScreen myStatus={myStatus} onOpenChat={openChatWith} tier={tier}/>}
-              {tab==="messages"&&<InboxScreen   convos={convos} onOpenConvo={openConvo} myStatus={myStatus}/>}
-              {tab==="boost"   &&<BoostScreen   posts={posts} tier={tier}/>}
-              {tab==="notifs"  &&(showBcastSettings
-                ?<BroadcastSettingsScreen bprefs={bprefs} onUpdate={setBprefs} onBack={()=>setShowBcastSettings(false)} tier={tier}/>
-                :<NotifsScreen bprefs={bprefs} onOpenBroadcastSettings={()=>setShowBcastSettings(true)}/>
-              )}
-              {tab==="upgrade" &&<UpgradeScreen tier={tier} onSelect={selectTier}/>}
-              {tab==="profile" &&<ProfileScreen user={user} tier={tier} onTab={setTab} sharesUsed={sharesUsed} myStatus={myStatus} onStatusToggle={()=>{setMyStatus(s=>!s);setPrivacySettings(p=>({...p,freeToChat:!p.freeToChat}));}} privacySettings={privacySettings} onPrivacyUpdate={s=>{setPrivacySettings(s);setMyStatus(s.freeToChat);}}/>}
-              {tab==="metrics" &&<MetricsScreen tier={tier}/>}
-            </>
+        <div style={{flex:1,overflowY:tab==="map"||showThread?"hidden":"auto"}}>
+          {/* Active thread screens */}
+          {showThread&&activeChat.type==="dm"&&(
+            <ChatScreen convo={activeChat.data} onBack={()=>setActiveChat(null)} onSend={sendMsg} myStatus={myStatus}/>
           )}
+          {showThread&&activeChat.type==="group"&&(
+            <GroupChatScreen group={activeChat.data} onBack={()=>setActiveChat(null)} user={user} onLeave={()=>setActiveChat(null)}/>
+          )}
+          {showThread&&activeChat.type==="channel"&&(
+            <ChannelScreen channel={activeChat.data} onBack={()=>setActiveChat(null)} onToggleFollow={toggleFollow}/>
+          )}
+          {/* Main screens */}
+          {!showThread&&<>
+            {tab==="feed"    &&<FeedScreen    posts={posts} onOpen={setDetail} onLike={like} tier={tier} lastPostTime={lastPostTime}/>}
+            {tab==="map"     &&<MapView       posts={posts} loc={loc} tier={tier}/>}
+            {tab==="chat"    &&<ChatTab
+              myStatus={myStatus} onStatusToggle={()=>{setMyStatus(s=>!s);setPrivacySettings(p=>({...p,freeToChat:!p.freeToChat}));}}
+              convos={convos} onOpenDM={openDM}
+              groups={groups} onOpenGroup={openGroup} onCreateGroup={()=>setShowCreateGroup(true)} onDeleteGroup={deleteGroup}
+              channels={channels} onOpenChannel={openChannel}
+              tier={tier} user={user}
+            />}
+            {tab==="boost"   &&<BoostScreen   posts={posts} tier={tier}/>}
+            {tab==="notifs"  &&(showBcastSettings
+              ?<BroadcastSettingsScreen bprefs={bprefs} onUpdate={setBprefs} onBack={()=>setShowBcastSettings(false)} tier={tier}/>
+              :<NotifsScreen bprefs={bprefs} onOpenBroadcastSettings={()=>setShowBcastSettings(true)}/>
+            )}
+            {tab==="upgrade" &&<UpgradeScreen tier={tier} onSelect={selectTier}/>}
+            {tab==="profile" &&<ProfileScreen user={user} tier={tier} onTab={setTab} sharesUsed={sharesUsed} myStatus={myStatus}
+              onStatusToggle={()=>{setMyStatus(s=>!s);setPrivacySettings(p=>({...p,freeToChat:!p.freeToChat}));}}
+              privacySettings={privacySettings} onPrivacyUpdate={s=>{setPrivacySettings(s);setMyStatus(s.freeToChat);}}/>}
+            {tab==="metrics" &&<MetricsScreen tier={tier}/>}
+          </>}
         </div>
 
-        {/* Nav */}
-        <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(8,8,14,.97)",borderTop:`1px solid ${C.border}`,display:"flex",padding:"5px 0 13px",backdropFilter:"blur(16px)",zIndex:49}}>
+        {/* Nav — hidden when thread open */}
+        {!showThread&&<div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"rgba(8,8,14,.97)",borderTop:`1px solid ${C.border}`,display:"flex",padding:"5px 0 13px",backdropFilter:"blur(16px)",zIndex:49}}>
           {tabs.map(tb=>{
             const active=tab===tb.id;
-            const col=tb.id==="upgrade"?C.gold:tb.id==="nearby"?C.green:tb.id==="messages"?C.teal:C.accent;
+            const col=tb.id==="upgrade"?C.gold:tb.id==="chat"?C.green:C.accent;
             const bc=tb.badgeColor||C.accent;
-            return (
-              <button key={tb.id} className="nb" onClick={()=>{setTab(tb.id);if(tb.id==="messages"){setMsgUnread(0);setActiveChat(null);}}} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"4px 0",color:active?col:C.muted,position:"relative"}}>
+            return(
+              <button key={tb.id} className="nb" onClick={()=>{setTab(tb.id);if(tb.id!=="chat")setActiveChat(null);}} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"4px 0",color:active?col:C.muted,position:"relative"}}>
                 <span style={{fontSize:14}}>{tb.icon}</span>
                 <span style={{fontSize:9,fontFamily:"Syne,sans-serif",fontWeight:600}}>{tb.label}</span>
                 {tb.badge>0&&!active&&<div style={{position:"absolute",top:0,right:"10%",minWidth:14,height:14,borderRadius:7,background:bc,display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,color:"white",fontWeight:700,padding:"0 3px"}}>{tb.badge}</div>}
               </button>
             );
           })}
-        </div>
+        </div>}
       </div>
       {showCreate&&<CreateModal onPost={p=>{newPost(p);setSC(false);}} onClose={()=>setSC(false)} tier={tier} sharesUsed={sharesUsed}/>}
+      {showCreateGroup&&<CreateGroupModal onClose={()=>setShowCreateGroup(false)} onCreate={createGroup} tier={tier}/>}
       {detail&&<DetailModal p={detail} onClose={()=>setDetail(null)} onLike={like} onComment={comment}/>}
     </>
   );
