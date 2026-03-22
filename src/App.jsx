@@ -1096,9 +1096,8 @@ function MapView({posts,loc,tier}) {
     const map=L.map(mapRef.current,{center:[loc.lat,loc.lng],zoom:t.zoom,zoomControl:true,attributionControl:true});
     mapInst.current=map;
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:'© <a href="https://openstreetmap.org">OSM</a>',maxZoom:19}).addTo(map);
-    // Radius ring
-    const rkm=t.r===Infinity?20000:t.r;
-    L.circle([loc.lat,loc.lng],{radius:rkm*1000,color:t.color,weight:1.5,opacity:.5,fillColor:t.color,fillOpacity:.05,dashArray:"6 4"}).addTo(map);
+    // No radius ring drawn on map — it clutters the view and overlaps zoom controls
+    // Radius context is shown in the overlay badge instead
     // You marker
     const youEl=document.createElement("div");
     youEl.style.cssText=`width:14px;height:14px;border-radius:50%;background:${C.green};border:3px solid ${C.bg};box-shadow:0 0 0 3px rgba(61,220,132,.3),0 0 12px ${C.green}`;
@@ -1139,9 +1138,9 @@ function MapView({posts,loc,tier}) {
         <div style={{color:C.muted,fontSize:12}}>Allow location access to continue</div>
       </div>}
       <div ref={mapRef} style={{width:"100%",height:"100%"}}/>
-      {isReady&&<div style={{position:"absolute",top:12,left:12,zIndex:500,background:"rgba(8,8,14,.93)",backdropFilter:"blur(10px)",border:`1px solid ${t.color}55`,borderRadius:10,padding:"7px 12px",display:"flex",alignItems:"center",gap:7}}>
+      {isReady&&<div style={{position:"absolute",bottom:14,right:12,zIndex:500,background:"rgba(8,8,14,.93)",backdropFilter:"blur(10px)",border:`1px solid ${t.color}55`,borderRadius:10,padding:"7px 12px",display:"flex",alignItems:"center",gap:7}}>
         <span style={{fontSize:13,color:t.color}}>{t.icon}</span>
-        <span style={{fontSize:11,fontWeight:700,fontFamily:"Syne,sans-serif",color:t.color}}>{t.rl} radius</span>
+        <span style={{fontSize:11,fontWeight:700,fontFamily:"Syne,sans-serif",color:t.color}}>{t.scope}</span>
       </div>}
       {isReady&&<div style={{position:"absolute",bottom:14,left:12,zIndex:500,background:"rgba(8,8,14,.93)",backdropFilter:"blur(8px)",border:`1px solid ${C.border}`,borderRadius:10,padding:"9px 12px"}}>
         {[[C.green,"You"],[C.accent,"Visible post"],[C.muted,"Beyond radius"]].map(([col,l])=><div key={l} style={{display:"flex",alignItems:"center",gap:7,fontSize:11,color:C.muted,marginBottom:4}}><span style={{width:7,height:7,borderRadius:"50%",background:col,display:"inline-block",flexShrink:0}}/>{l}</div>)}
@@ -2450,7 +2449,8 @@ export default function App() {
   const tabs=[
     {id:"feed",    icon:"◉",  label:"Feed"},
     {id:"map",     icon:"◎",  label:"Map"},
-    {id:"chat",    icon:"💬", label:"Chat",  badge:totalChatUnread, badgeColor:C.green},
+    {id:"chat",    icon:"💬", label:"Chat",   badge:totalChatUnread, badgeColor:C.green},
+    {id:"notifs",  icon:"🔔", label:"Alerts", badge:unread},
     {id:"upgrade", icon:"✦",  label:"Upgrade"},
     {id:"profile", icon:"○",  label:"Profile"},
   ];
@@ -2509,11 +2509,11 @@ export default function App() {
               channels={channels} onOpenChannel={openChannel}
               tier={tier} user={user}
             />}
-            {tab==="boost"   &&<BoostScreen   posts={posts} tier={tier}/>}
             {tab==="notifs"  &&(showBcastSettings
-              ?<BroadcastSettingsScreen bprefs={bprefs} onUpdate={setBprefs} onBack={()=>setShowBcastSettings(false)} tier={tier}/>
+              ?<BroadcastSettingsScreen bprefs={bprefs} onUpdate={setBprefs} onBack={()=>{setShowBcastSettings(false);}} tier={tier}/>
               :<NotifsScreen bprefs={bprefs} onOpenBroadcastSettings={()=>setShowBcastSettings(true)}/>
             )}
+            {tab==="boost"   &&<BoostScreen   posts={posts} tier={tier}/>}
             {tab==="upgrade" &&<UpgradeScreen tier={tier} onSelect={selectTier}/>}
             {tab==="profile" &&<ProfileScreen user={user} tier={tier} onTab={setTab} sharesUsed={sharesUsed} myStatus={myStatus}
               onStatusToggle={()=>{setMyStatus(s=>!s);setPrivacySettings(p=>({...p,freeToChat:!p.freeToChat}));}}
@@ -2529,7 +2529,7 @@ export default function App() {
             const col=tb.id==="upgrade"?C.gold:tb.id==="chat"?C.green:C.accent;
             const bc=tb.badgeColor||C.accent;
             return(
-              <button key={tb.id} className="nb" onClick={()=>{setTab(tb.id);if(tb.id!=="chat")setActiveChat(null);}} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"4px 0",color:active?col:C.muted,position:"relative"}}>
+              <button key={tb.id} className="nb" onClick={()=>{setTab(tb.id);if(tb.id!=="chat")setActiveChat(null);if(tb.id==="notifs")setUnread(0);}} style={{flex:1,background:"none",border:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"4px 0",color:active?col:C.muted,position:"relative"}}>
                 <span style={{fontSize:14}}>{tb.icon}</span>
                 <span style={{fontSize:9,fontFamily:"Syne,sans-serif",fontWeight:600}}>{tb.label}</span>
                 {tb.badge>0&&!active&&<div style={{position:"absolute",top:0,right:"10%",minWidth:14,height:14,borderRadius:7,background:bc,display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,color:"white",fontWeight:700,padding:"0 3px"}}>{tb.badge}</div>}
